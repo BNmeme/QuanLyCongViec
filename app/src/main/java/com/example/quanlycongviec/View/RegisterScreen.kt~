@@ -1,0 +1,31 @@
+package com.example.quanlycongviec.View
+
+@Composable
+fun RegisterScreen(onToggle: () -> Unit) {
+    val context = LocalContext.current
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Register", style = MaterialTheme.typography.h4)
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
+        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation())
+
+        Button(onClick = {
+            FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener {
+                    if (it.isSuccessful) {
+                        Toast.makeText(context, "Registered Successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, it.exception?.message ?: "Registration Failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }) {
+            Text("Register")
+        }
+
+        TextButton(onClick = onToggle) {
+            Text("Already have an account? Login")
+        }
+    }
+}
