@@ -1,0 +1,89 @@
+package com.example.quanlycongviec.ui.screens.tasks.group
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.quanlycongviec.data.repository.AuthRepository
+import com.example.quanlycongviec.data.repository.GroupRepository
+import com.example.quanlycongviec.di.AppModule
+import com.example.quanlycongviec.domain.model.Group
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.UUID
+import java.util.Date
+
+class CreateGroupViewModel : ViewModel() {
+    private val authRepository = AppModule.provideAuthRepository()
+    private val groupRepository = AppModule.provideGroupRepository()
+    
+    private val _uiState = MutableStateFlow(CreateGroupUiState())
+    val uiState: StateFlow<CreateGroupUiState> = _uiState.asStateFlow()
+    
+    fun updateGroupName(name: String) {
+        _uiState.update { it.copy(groupName = name, groupNameError = null) }
+    }
+    
+    fun updateGroupDescription(description: String) {
+        _uiState.update { it.copy(groupDescription = description, groupDescriptionError = null) }
+    }
+    
+    fun createGroup(onSuccess: () -> Unit) {
+        if (!validateInputs()) return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                val currentUserId = authRepository.getCurrentUserId()
+                if (currentUserId != null) {
+                    val group = Group(
+                        id = UUID.randomUUID().toString(),
+                        name = _uiState.value.groupName,
+                        description = _uiState.value.groupDescription,
+                        createdBy = currentUserId,
+                        members = listOf(currentUserId),
+                        createdAt = Date().time
+                    )
+                    
+                    groupRepository.createGroup(group)
+                    _uiState.update { it.copy(isLoading = false) }
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to create group: ${e.message}"
+                    ) 
+                }
+            }
+        }
+    }
+    
+    private fun validateInputs(): Boolean {
+        var isValid = true
+        
+        if (_uiState.value.groupName.isBlank()) {
+            _uiState.update { it.copy(groupNameError = "Group name cannot be empty") }
+            isValid = false
+        }
+        
+        if (_uiState.value.groupDescription.isBlank()) {
+            _uiState.update { it.copy(groupDescriptionError = "Description cannot be empty") }
+            isValid = false
+        }
+        
+        return isValid
+    }
+}
+
+data class CreateGroupUiState(
+    val groupName: String = "",
+    val groupDescription: String = "",
+    val isLoading: Boolean = false,
+    val groupNameError: String? = null,
+    val groupDescriptionError: String? = null,
+    val errorMessage: String? = null
+)

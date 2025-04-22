@@ -1,0 +1,181 @@
+package com.example.quanlycongviec.ui.navigation
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainAppScaffold(navController: NavHostController) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    
+    val isBottomBarVisible = remember(currentDestination) {
+        currentDestination?.route?.let { route ->
+            route == BottomNavItem.Home.route ||
+            route == BottomNavItem.Calendar.route ||
+            route == BottomNavItem.Notifications.route ||
+            route == BottomNavItem.Profile.route
+        } ?: false
+    }
+    
+    val isTopBarVisible = remember(currentDestination) {
+        currentDestination?.route?.let { route ->
+            route != Screen.Splash.route &&
+            route != Screen.SignIn.route &&
+            route != Screen.SignUp.route
+        } ?: true
+    }
+
+    NavigationDrawer(
+        drawerState = drawerState,
+        onDrawerItemClick = { route ->
+            scope.launch {
+                drawerState.close()
+            }
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        },
+        onLogout = {
+            scope.launch {
+                drawerState.close()
+            }
+            navController.navigate(Screen.SignIn.route) {
+                popUpTo(navController.graph.id) {
+                    inclusive = true
+                }
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                if (isTopBarVisible) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = when (currentDestination?.route) {
+                                    BottomNavItem.Home.route -> "Task Manager"
+                                    BottomNavItem.Calendar.route -> "Calendar"
+                                    BottomNavItem.Notifications.route -> "Notifications"
+                                    BottomNavItem.Profile.route -> "Profile"
+                                    Screen.PersonalTasks.route -> "Personal Tasks"
+                                    Screen.GroupTasks.route -> "Group Tasks"
+                                    else -> "Task Manager"
+                                }
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(
+                                    imageVector = Icons.Default.Menu,
+                                    contentDescription = "Menu"
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { /* TODO: Implement search */ }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search"
+                                )
+                            }
+                        }
+                    )
+                }
+            },
+            bottomBar = {
+                if (isBottomBarVisible) {
+                    NavigationBar {
+                        val items = listOf(
+                            BottomNavItem.Home,
+                            BottomNavItem.Calendar,
+                            BottomNavItem.Notifications,
+                            BottomNavItem.Profile
+                        )
+                        
+                        items.forEach { item ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                            
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selected) item.selectedIcon else item.icon,
+                                        contentDescription = item.title
+                                    )
+                                },
+                                label = { Text(item.title) },
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            AppNavHost(
+                navController = navController,
+                modifier = Modifier.padding(innerPadding)
+            )
+        }
+    }
+}
+
+sealed class BottomNavItem(
+    val route: String,
+    val title: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector
+) {
+    object Home : BottomNavItem(
+        route = "home",
+        title = "Home",
+        icon = Icons.Outlined.Home,
+        selectedIcon = Icons.Filled.Home
+    )
+    
+    object Calendar : BottomNavItem(
+        route = "calendar",
+        title = "Calendar",
+        icon = Icons.Outlined.DateRange,
+        selectedIcon = Icons.Filled.DateRange
+    )
+    
+    object Notifications : BottomNavItem(
+        route = "notifications",
+        title = "Notifications",
+        icon = Icons.Outlined.Notifications,
+        selectedIcon = Icons.Filled.Notifications
+    )
+    
+    object Profile : BottomNavItem(
+        route = "profile",
+        title = "Profile",
+        icon = Icons.Outlined.Person,
+        selectedIcon = Icons.Filled.Person
+    )
+}

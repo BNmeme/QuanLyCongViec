@@ -1,0 +1,85 @@
+package com.example.quanlycongviec.data.repository
+
+import com.example.quanlycongviec.domain.model.Task
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+class TaskRepository(
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+) {
+
+    suspend fun getPersonalTasks(userId: String): List<Task> {
+        val querySnapshot = firestore.collection("tasks")
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("isGroupTask", false)
+            .get()
+            .await()
+
+        return querySnapshot.documents.mapNotNull { document ->
+            document.toObject(Task::class.java)?.copy(id = document.id)
+        }
+    }
+
+    suspend fun getGroupTasksForUser(userId: String): List<Task> {
+        // Get tasks where the user is assigned
+        val querySnapshot = firestore.collection("tasks")
+            .whereEqualTo("isGroupTask", true)
+            .whereArrayContains("assignedTo", userId)
+            .get()
+            .await()
+
+        return querySnapshot.documents.mapNotNull { document ->
+            document.toObject(Task::class.java)?.copy(id = document.id)
+        }
+    }
+
+    suspend fun getTasksByGroupId(groupId: String): List<Task> {
+        val querySnapshot = firestore.collection("tasks")
+            .whereEqualTo("groupId", groupId)
+            .get()
+            .await()
+
+        return querySnapshot.documents.mapNotNull { document ->
+            document.toObject(Task::class.java)?.copy(id = document.id)
+        }
+    }
+
+    suspend fun getTaskById(taskId: String): Task {
+        val document = firestore.collection("tasks").document(taskId).get().await()
+        return document.toObject(Task::class.java)?.copy(id = document.id)
+            ?: throw IllegalStateException("Task not found")
+    }
+
+    suspend fun createTask(task: Task): String {
+        val documentRef = firestore.collection("tasks").document()
+        firestore.collection("tasks").document(documentRef.id).set(task).await()
+        return documentRef.id
+    }
+
+    suspend fun updateTask(task: Task) {
+        firestore.collection("tasks").document(task.id).set(task).await()
+    }
+
+    suspend fun deleteTask(taskId: String) {
+        firestore.collection("tasks").document(taskId).delete().await()
+    }
+
+    suspend fun toggleTaskCompletion(taskId: String, isCompleted: Boolean) {
+        firestore.collection("tasks").document(taskId)
+            .update("isCompleted", isCompleted)
+            .await()
+    }
+
+    suspend fun reassignTask(taskId: String, assignedTo: List<String>) {
+        firestore.collection("tasks").document(taskId)
+            .update("assignedTo", assignedTo)
+            .await()
+    }
+
+    suspend fun deleteTasksByGroupId(groupId: String) {
+        val tasks = getTasksByGroupId(groupId)
+        for (task in tasks) {
+            deleteTask(task.id)
+        }
+    }
+}
