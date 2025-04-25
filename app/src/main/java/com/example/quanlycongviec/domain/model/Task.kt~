@@ -11,6 +11,5 @@ data class Task(
     val userId: String = "",
     val isGroupTask: Boolean = false,
     val groupId: String = "",
-    val assignedTo: List<String> = emptyList(),
-    val labels: List<String> = emptyList() // List of label IDs
+    val assignedTo: List<String> = emptyList()
 )

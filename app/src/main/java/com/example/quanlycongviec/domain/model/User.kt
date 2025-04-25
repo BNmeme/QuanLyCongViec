@@ -5,5 +5,11 @@ data class User(
     val name: String = "",
     val email: String = "",
     val photoUrl: String? = null,
-    val groups: List<String> = emptyList()
+    val preferences: UserPreferences? = null
+)
+
+data class UserPreferences(
+    val darkModeEnabled: Boolean = false,
+    val notificationsEnabled: Boolean = true,
+    val reminderTimeBeforeDeadline: Int = 60 // minutes
 )

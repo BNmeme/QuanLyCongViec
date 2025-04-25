@@ -26,7 +26,7 @@ fun StatisticsScreen(
     viewModel: StatisticsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -39,7 +39,7 @@ fun StatisticsScreen(
                 completedTasks = uiState.completedTasks
             )
         }
-        
+
         item {
             PriorityDistributionCard(
                 highPriorityCount = uiState.highPriorityCount,
@@ -47,13 +47,13 @@ fun StatisticsScreen(
                 lowPriorityCount = uiState.lowPriorityCount
             )
         }
-        
+
         item {
             TasksOverTimeCard(
                 taskCountByDay = uiState.taskCountByDay
             )
         }
-        
+
         item {
             TaskTypeDistributionCard(
                 personalTaskCount = uiState.personalTaskCount,
@@ -158,25 +158,25 @@ fun PriorityDistributionCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             PriorityBar(
                 label = "High",
                 count = highPriorityCount,
                 color = TaskPriority1
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             PriorityBar(
                 label = "Medium",
                 count = mediumPriorityCount,
                 color = TaskPriority2
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             PriorityBar(
                 label = "Low",
                 count = lowPriorityCount,
@@ -201,7 +201,7 @@ fun PriorityBar(
             modifier = Modifier.width(60.dp),
             style = MaterialTheme.typography.bodyMedium
         )
-        
+
         LinearProgressIndicator(
             progress = if (count > 0) 1f else 0f,
             color = color,
@@ -209,7 +209,7 @@ fun PriorityBar(
                 .weight(1f)
                 .height(20.dp)
         )
-        
+
         Text(
             text = count.toString(),
             modifier = Modifier.padding(start = 16.dp),
@@ -234,9 +234,9 @@ fun TasksOverTimeCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             if (taskCountByDay.isEmpty()) {
                 Text(
                     text = "No task data available",
@@ -279,9 +279,9 @@ fun TaskTypeDistributionCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -291,7 +291,7 @@ fun TaskTypeDistributionCard(
                     count = personalTaskCount,
                     color = colorScheme.primary
                 )
-                
+
                 TypePieSlice(
                     label = "Group",
                     count = groupTaskCount,
@@ -316,14 +316,14 @@ fun TypePieSlice(
                 .size(24.dp)
                 .background(color, shape = MaterialTheme.shapes.small)
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium
         )
-        
+
         Text(
             text = count.toString(),
             style = MaterialTheme.typography.bodyLarge,

@@ -104,5 +104,10 @@ fun AppNavHost(navController: NavHostController) {
         composable(Screen.Settings.route) {
             SettingsScreen(navController = navController)
         }
+
+        // Add new route for Labels screen
+        composable(Screen.Labels.route) {
+            LabelsScreen(navController = navController)
+        }
     }
 }

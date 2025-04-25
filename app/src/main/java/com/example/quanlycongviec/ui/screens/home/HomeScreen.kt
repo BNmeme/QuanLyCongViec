@@ -28,6 +28,7 @@ import com.example.quanlycongviec.ui.navigation.Screen
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -35,127 +36,152 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // User greeting
-        item {
-            UserGreetingSection(
-                userName = uiState.user?.name ?: "User",
-                onSettingsClick = {
-                    navController.navigate(Screen.Settings.route)
-                }
-            )
-        }
-
-        // Task summary
-        item {
-            TaskSummarySection(
-                personalTasksCount = uiState.personalTasks.size,
-                groupTasksCount = uiState.groupTasks.size,
-                completedTasksCount = uiState.personalTasks.count { it.isCompleted } + uiState.groupTasks.count { it.isCompleted }
-            )
-        }
-
-        // Task categories
-        item {
-            TaskCategoriesSection(
-                onPersonalTasksClick = { navController.navigate(Screen.PersonalTasks.route) },
-                onGroupTasksClick = { navController.navigate(Screen.GroupTasks.route) },
-                onGroupsClick = { navController.navigate(Screen.Groups.route) }
-            )
-        }
-
-        // Today's tasks
-        item {
-            Text(
-                text = "Today's Tasks",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
-            )
-        }
-
-        val todayTasks = uiState.recentTasks.filter {
-            val today = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            val tomorrow = today + 24 * 60 * 60 * 1000
-
-            it.dueDate in today until tomorrow
-        }
-
-        if (todayTasks.isNotEmpty()) {
-            items(todayTasks) { task ->
-                TaskItem(
-                    task = task,
-                    onClick = {
-                        navigateToTaskDetail(navController, task)
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        } else {
-            item {
-                EmptyTasksMessage(message = "No tasks due today")
-            }
-        }
-
-        // Recent tasks
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Recent Tasks",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                TextButton(onClick = { viewModel.showAddTaskDialog() }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                    Text(text = "Add Task")
-                }
-            }
-        }
-
-        if (uiState.recentTasks.isEmpty()) {
-            item {
-                EmptyTasksMessage(message = "No recent tasks")
-            }
-        } else {
-            items(uiState.recentTasks.take(5)) { task ->
-                TaskItem(
-                    task = task,
-                    onClick = {
-                        navigateToTaskDetail(navController, task)
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
+    // Effect to refresh data when screen is shown
+    LaunchedEffect(key1 = true) {
+        viewModel.refreshData()
     }
 
-    if (uiState.showAddTaskDialog) {
-        AddTaskDialog(
-            onDismiss = { viewModel.hideAddTaskDialog() },
-            onAddPersonalTask = {
-                viewModel.hideAddTaskDialog()
-                navController.navigate(Screen.PersonalTasks.route)
-            },
-            onAddGroupTask = {
-                viewModel.hideAddTaskDialog()
-                navController.navigate(Screen.GroupTasks.route)
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.showAddTaskDialog() },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Task",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
-        )
+        }
+    ) { paddingValues ->
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // User greeting
+                item {
+                    UserGreetingSection(
+                        userName = uiState.user?.name ?: "User",
+                        onSettingsClick = {
+                            navController.navigate(Screen.Settings.route)
+                        }
+                    )
+                }
+
+                // Task summary
+                item {
+                    TaskSummarySection(
+                        personalTasksCount = uiState.personalTasks.size,
+                        groupTasksCount = uiState.groupTasks.size,
+                        completedTasksCount = uiState.personalTasks.count { it.isCompleted } + uiState.groupTasks.count { it.isCompleted }
+                    )
+                }
+
+                // Task categories
+                item {
+                    TaskCategoriesSection(
+                        onPersonalTasksClick = { navController.navigate(Screen.PersonalTasks.route) },
+                        onGroupTasksClick = { navController.navigate(Screen.GroupTasks.route) },
+                        onGroupsClick = { navController.navigate(Screen.Groups.route) }
+                    )
+                }
+
+                // Today's tasks
+                item {
+                    Text(
+                        text = "Today's Tasks",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
+                    )
+                }
+
+                if (uiState.todayTasks.isNotEmpty()) {
+                    items(uiState.todayTasks) { task ->
+                        TaskItem(
+                            task = task,
+                            onClick = {
+                                navigateToTaskDetail(navController, task)
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                } else {
+                    item {
+                        EmptyTasksMessage(message = "No tasks due today")
+                    }
+                }
+
+                // Recent tasks
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Recent Tasks",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+
+                        TextButton(onClick = { viewModel.showAddTaskDialog() }) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                            Text(text = "Add Task")
+                        }
+                    }
+                }
+
+                if (uiState.recentTasks.isEmpty()) {
+                    item {
+                        EmptyTasksMessage(message = "No recent tasks")
+                    }
+                } else {
+                    items(uiState.recentTasks) { task ->
+                        TaskItem(
+                            task = task,
+                            onClick = {
+                                navigateToTaskDetail(navController, task)
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+
+                // Add some bottom padding
+                item {
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+            }
+        }
+
+        if (uiState.showAddTaskDialog) {
+            AddTaskDialog(
+                onDismiss = { viewModel.hideAddTaskDialog() },
+                onAddPersonalTask = {
+                    viewModel.hideAddTaskDialog()
+                    navController.navigate(Screen.PersonalTasks.route)
+                },
+                onAddGroupTask = {
+                    viewModel.hideAddTaskDialog()
+                    navController.navigate(Screen.GroupTasks.route)
+                }
+            )
+        }
     }
 }
 

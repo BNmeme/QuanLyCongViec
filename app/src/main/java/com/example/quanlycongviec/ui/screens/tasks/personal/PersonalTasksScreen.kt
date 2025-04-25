@@ -39,7 +39,7 @@ fun PersonalTasksScreen(
     viewModel: PersonalTasksViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,16 +114,16 @@ fun PersonalTasksScreen(
                 }
             }
         }
-        
-//        if (uiState.showAddTaskDialog) {
-//            AddPersonalTaskDialog(
-//                onDismiss = { viewModel.hideAddTaskDialog() },
-//                onTaskAdded = { task ->
-//                    viewModel.addTask(task) {
-//                        viewModel.hideAddTaskDialog()
-//                    }
-//                }
-//            )
-//        }
+
+        if (uiState.showAddTaskDialog) {
+            AddPersonalTaskDialog(
+                onDismiss = { viewModel.hideAddTaskDialog() },
+                onTaskAdded = { task ->
+                    viewModel.addTask(task) {
+                        viewModel.hideAddTaskDialog()
+                    }
+                }
+            )
+        }
     }
 }

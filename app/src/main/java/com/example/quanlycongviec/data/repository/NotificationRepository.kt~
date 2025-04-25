@@ -9,31 +9,31 @@ import java.util.*
 class NotificationRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-
+    
     suspend fun getNotificationsForUser(userId: String): List<Notification> {
         val querySnapshot = firestore.collection("notifications")
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .get()
             .await()
-
+            
         return querySnapshot.documents.mapNotNull { document ->
             document.toObject(Notification::class.java)?.copy(id = document.id)
         }
     }
-
+    
     suspend fun markNotificationAsRead(notificationId: String) {
         firestore.collection("notifications").document(notificationId)
             .update("isRead", true)
             .await()
     }
-
+    
     suspend fun createNotification(notification: Notification): String {
         val documentRef = firestore.collection("notifications").document()
         firestore.collection("notifications").document(documentRef.id).set(notification).await()
         return documentRef.id
     }
-
+    
     suspend fun createTaskAssignedNotification(
         userId: String,
         taskTitle: String,
@@ -49,10 +49,10 @@ class NotificationRepository(
             type = NotificationType.TASK_ASSIGNED,
             relatedTaskId = taskId
         )
-
+        
         return createNotification(notification)
     }
-
+    
     suspend fun createTaskCompletedNotification(
         userId: String,
         taskTitle: String,
@@ -68,29 +68,10 @@ class NotificationRepository(
             type = NotificationType.TASK_COMPLETED,
             relatedTaskId = taskId
         )
-
+        
         return createNotification(notification)
     }
-
-    suspend fun createTaskDeadlineNotification(
-        userId: String,
-        taskTitle: String,
-        taskId: String,
-        dueDate: Long
-    ): String {
-        val notification = Notification(
-            title = "Task Deadline Approaching",
-            message = "Task '$taskTitle' is due soon",
-            timestamp = System.currentTimeMillis(),
-            isRead = false,
-            userId = userId,
-            type = NotificationType.TASK_DEADLINE,
-            relatedTaskId = taskId
-        )
-
-        return createNotification(notification)
-    }
-
+    
     suspend fun createGroupInvitationNotification(
         userId: String,
         groupName: String,
@@ -106,35 +87,7 @@ class NotificationRepository(
             type = NotificationType.GROUP_INVITATION,
             relatedGroupId = groupId
         )
-
-        return createNotification(notification)
-    }
-
-    suspend fun createGroupInvitationResponseNotification(
-        userId: String,
-        groupName: String,
-        groupId: String,
-        respondentName: String,
-        accepted: Boolean
-    ): String {
-        val type = if (accepted) {
-            NotificationType.GROUP_INVITATION_ACCEPTED
-        } else {
-            NotificationType.GROUP_INVITATION_DECLINED
-        }
-
-        val action = if (accepted) "accepted" else "declined"
-
-        val notification = Notification(
-            title = "Group Invitation Response",
-            message = "$respondentName has $action your invitation to join $groupName",
-            timestamp = System.currentTimeMillis(),
-            isRead = false,
-            userId = userId,
-            type = type,
-            relatedGroupId = groupId
-        )
-
+        
         return createNotification(notification)
     }
 }

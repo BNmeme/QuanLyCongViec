@@ -1,4 +1,5 @@
 package com.example.quanlycongviec.ui.navigation
+
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object SignIn : Screen("sign_in")
@@ -16,4 +17,5 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Statistics : Screen("statistics")
     object Settings : Screen("settings")
+    object Labels : Screen("labels") // New screen for labels management
 }

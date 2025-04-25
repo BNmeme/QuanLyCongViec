@@ -10,6 +10,8 @@ import com.example.quanlycongviec.ui.screens.tasks.group.CreateGroupScreen
 import com.example.quanlycongviec.ui.screens.tasks.group.GroupDetailScreen
 import com.example.quanlycongviec.ui.screens.tasks.group.GroupsScreen
 import com.example.quanlycongviec.ui.screens.home.HomeScreen
+import com.example.quanlycongviec.ui.screens.labels.LabelsScreen
+import com.example.quanlycongviec.ui.screens.main.MainScreen
 import com.example.quanlycongviec.ui.screens.notifications.NotificationsScreen
 import com.example.quanlycongviec.ui.screens.profile.ProfileScreen
 import com.example.quanlycongviec.ui.screens.settings.SettingsScreen
@@ -102,6 +104,11 @@ fun AppNavHost(navController: NavHostController) {
 
         composable(Screen.Settings.route) {
             SettingsScreen(navController = navController)
+        }
+
+        // Add new route for Labels screen
+        composable(Screen.Labels.route) {
+            LabelsScreen(navController = navController)
         }
     }
 }

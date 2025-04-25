@@ -76,9 +76,9 @@ fun TaskItem(
                         }
                     )
             )
-
+            
             Spacer(modifier = Modifier.width(12.dp))
-
+            
             // Task content
             Column(
                 modifier = Modifier.weight(1f)
@@ -88,12 +88,12 @@ fun TaskItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (task.isCompleted)
+                    color = if (task.isCompleted) 
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    else
+                    else 
                         MaterialTheme.colorScheme.onSurface
                 )
-
+                
                 Text(
                     text = task.description,
                     style = MaterialTheme.typography.bodyMedium,
@@ -101,7 +101,7 @@ fun TaskItem(
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-
+                
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp)
@@ -112,22 +112,22 @@ fun TaskItem(
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier.size(14.dp)
                     )
-
+                    
                     Text(
                         text = " ${formatDate(task.dueDate)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
-
+                    
                     Spacer(modifier = Modifier.width(8.dp))
-
+                    
                     Icon(
                         imageVector = if (task.isGroupTask) Icons.Default.Group else Icons.Default.Person,
                         contentDescription = null,
                         tint = if (task.isGroupTask) GroupTaskColor else PersonalTaskColor,
                         modifier = Modifier.size(14.dp)
                     )
-
+                    
                     Text(
                         text = if (task.isGroupTask) " Group" else " Personal",
                         style = MaterialTheme.typography.bodySmall,
@@ -135,7 +135,7 @@ fun TaskItem(
                     )
                 }
             }
-
+            
             // Completion status
             if (task.isCompleted) {
                 Icon(

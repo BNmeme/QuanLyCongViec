@@ -1,6 +1,7 @@
 package com.example.quanlycongviec.ui.screens.main
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,23 +36,24 @@ fun MainScreen(
 
     val isAuthenticated = remember(uiState.isLoggedIn) { uiState.isLoggedIn }
     val isBottomBarVisible = remember(currentDestination) {
-        currentDestination?.hierarchy?.any { 
+        currentDestination?.hierarchy?.any {
             it.route == Screen.Home.route ||
-            it.route == Screen.Notifications.route ||
-            it.route == Screen.Profile.route
+                    it.route == Screen.Notifications.route ||
+                    it.route == Screen.Profile.route
         } ?: false
     }
-    
+
     val isDrawerEnabled = remember(currentDestination, isAuthenticated) {
-        isAuthenticated && (currentDestination?.hierarchy?.any { 
+        isAuthenticated && (currentDestination?.hierarchy?.any {
             it.route == Screen.Home.route ||
-            it.route == Screen.PersonalTasks.route ||
-            it.route == Screen.GroupTasks.route ||
-            it.route == Screen.Groups.route ||
-            it.route == Screen.Statistics.route ||
-            it.route == Screen.Settings.route ||
-            it.route == Screen.Notifications.route ||
-            it.route == Screen.Profile.route
+                    it.route == Screen.PersonalTasks.route ||
+                    it.route == Screen.GroupTasks.route ||
+                    it.route == Screen.Groups.route ||
+                    it.route == Screen.Statistics.route ||
+                    it.route == Screen.Settings.route ||
+                    it.route == Screen.Notifications.route ||
+                    it.route == Screen.Profile.route ||
+                    it.route == Screen.Labels.route
         } ?: false)
     }
 
@@ -71,7 +73,7 @@ fun MainScreen(
                         closeDrawer = { scope.launch { drawerState.close() } }
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    
+
                     NavigationDrawerItem(
                         icon = Icons.Default.Logout,
                         label = "Sign Out",
@@ -99,7 +101,7 @@ fun MainScreen(
             topBar = {
                 if (isDrawerEnabled) {
                     CenterAlignedTopAppBar(
-                        title = { 
+                        title = {
                             Text(
                                 text = getTitleForRoute(currentDestination?.route ?: ""),
                                 style = MaterialTheme.typography.titleLarge
@@ -153,7 +155,7 @@ private fun DrawerHeader(
             text = userName,
             style = MaterialTheme.typography.headlineSmall
         )
-        
+
         Text(
             text = userEmail,
             style = MaterialTheme.typography.bodyMedium,
@@ -175,6 +177,7 @@ private fun NavigationDrawerItems(
         NavigationItem("Personal Tasks", Icons.Default.Person, Screen.PersonalTasks.route),
         NavigationItem("Group Tasks", Icons.Default.Group, Screen.GroupTasks.route),
         NavigationItem("Groups", Icons.Default.People, Screen.Groups.route),
+        NavigationItem("Labels", Icons.AutoMirrored.Filled.Label, Screen.Labels.route), // New Labels item
         NavigationItem("Statistics", Icons.Default.BarChart, Screen.Statistics.route),
         NavigationItem("Settings", Icons.Default.Settings, Screen.Settings.route)
     )
@@ -182,7 +185,7 @@ private fun NavigationDrawerItems(
     Column(modifier = Modifier.fillMaxWidth()) {
         items.forEach { item ->
             val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-            
+
             NavigationDrawerItem(
                 icon = item.icon,
                 label = item.label,
@@ -212,7 +215,7 @@ fun NavigationDrawerItem(
     onClick: () -> Unit
 ) {
     NavigationDrawerItem(
-        icon = { 
+        icon = {
             Icon(
                 imageVector = icon,
                 contentDescription = null
@@ -229,7 +232,7 @@ fun NavigationDrawerItem(
 private fun BottomNavigationBar(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    
+
     val items = listOf(
         BottomNavigationItem(
             icon = Icons.Default.Home,
@@ -253,7 +256,7 @@ private fun BottomNavigationBar(navController: NavHostController) {
             val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
             NavigationBarItem(
-                icon = { 
+                icon = {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.label
@@ -284,9 +287,10 @@ fun getTitleForRoute(route: String): String {
         route.startsWith(Screen.GroupTasks.route) -> "Group Tasks"
         route.startsWith(Screen.Groups.route) -> "Groups"
         route.startsWith(Screen.Notifications.route) -> "Notifications"
-        route.startsWith(Screen.Profile.route) -> "Profile" 
+        route.startsWith(Screen.Profile.route) -> "Profile"
         route.startsWith(Screen.Statistics.route) -> "Statistics"
         route.startsWith(Screen.Settings.route) -> "Settings"
+        route.startsWith(Screen.Labels.route) -> "Manage Labels"
         route.startsWith(Screen.PersonalTaskDetail.route) -> "Task Details"
         route.startsWith(Screen.GroupTaskDetail.route) -> "Group Task"
         route.startsWith(Screen.CreateGroup.route) -> "Create Group"
