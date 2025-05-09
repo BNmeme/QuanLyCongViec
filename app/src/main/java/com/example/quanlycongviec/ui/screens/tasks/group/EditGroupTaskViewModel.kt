@@ -3,8 +3,11 @@ package com.example.quanlycongviec.ui.screens.tasks.group
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.quanlycongviec.data.repository.AuthRepository
+import com.example.quanlycongviec.data.repository.GroupRepository
 import com.example.quanlycongviec.data.repository.TaskRepository
 import com.example.quanlycongviec.di.AppModule
+import com.example.quanlycongviec.domain.model.Group
 import com.example.quanlycongviec.domain.model.Task
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,21 +19,45 @@ class EditGroupTaskViewModel(
     private val taskId: String
 ) : ViewModel() {
     private val taskRepository = AppModule.provideTaskRepository()
-    
+    private val authRepository = AppModule.provideAuthRepository()
+    private val groupRepository = AppModule.provideGroupRepository()
+
     private val _uiState = MutableStateFlow(EditGroupTaskUiState())
     val uiState: StateFlow<EditGroupTaskUiState> = _uiState.asStateFlow()
-    
+
     init {
         loadTask()
     }
-    
+
     private fun loadTask() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
+
             try {
+                val currentUserId = authRepository.getCurrentUserId() ?: ""
                 val task = taskRepository.getTaskById(taskId)
-                _uiState.update { 
+
+                // Check if user has permission to edit this task
+                val group = if (task.isGroupTask && task.groupId.isNotEmpty()) {
+                    groupRepository.getGroupById(task.groupId)
+                } else {
+                    null
+                }
+
+                val canEditTask = group?.canManageTasks(currentUserId) ?: false
+
+                if (!canEditTask) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "You don't have permission to edit this task",
+                            permissionDenied = true
+                        )
+                    }
+                    return@launch
+                }
+
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         title = task.title,
@@ -38,79 +65,79 @@ class EditGroupTaskViewModel(
                         priority = task.priority,
                         dueDate = task.dueDate,
                         originalTask = task
-                    ) 
+                    )
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = "Failed to load task: ${e.message}"
-                    ) 
+                    )
                 }
             }
         }
     }
-    
+
     fun updateTitle(title: String) {
         _uiState.update { it.copy(title = title, titleError = null) }
     }
-    
+
     fun updateDescription(description: String) {
         _uiState.update { it.copy(description = description, descriptionError = null) }
     }
-    
+
     fun updatePriority(priority: Int) {
         _uiState.update { it.copy(priority = priority) }
     }
-    
+
     fun updateDueDate(dueDate: Long) {
         _uiState.update { it.copy(dueDate = dueDate) }
     }
-    
+
     fun saveTask(onSuccess: () -> Unit) {
         if (!validateInputs()) return
-        
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
+
             try {
                 val originalTask = _uiState.value.originalTask ?: return@launch
-                
+
                 val updatedTask = originalTask.copy(
                     title = _uiState.value.title,
                     description = _uiState.value.description,
                     priority = _uiState.value.priority,
                     dueDate = _uiState.value.dueDate
                 )
-                
+
                 taskRepository.updateTask(updatedTask)
                 _uiState.update { it.copy(isLoading = false) }
                 onSuccess()
-                
+
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = "Failed to save task: ${e.message}"
-                    ) 
+                    )
                 }
             }
         }
     }
-    
+
     private fun validateInputs(): Boolean {
         var isValid = true
-        
+
         if (_uiState.value.title.isBlank()) {
             _uiState.update { it.copy(titleError = "Title cannot be empty") }
             isValid = false
         }
-        
+
         if (_uiState.value.description.isBlank()) {
             _uiState.update { it.copy(descriptionError = "Description cannot be empty") }
             isValid = false
         }
-        
+
         return isValid
     }
 }
@@ -124,7 +151,8 @@ data class EditGroupTaskUiState(
     val titleError: String? = null,
     val descriptionError: String? = null,
     val errorMessage: String? = null,
-    val originalTask: Task? = null
+    val originalTask: Task? = null,
+    val permissionDenied: Boolean = false
 )
 
 class EditGroupTaskViewModelFactory(private val taskId: String) : ViewModelProvider.Factory {

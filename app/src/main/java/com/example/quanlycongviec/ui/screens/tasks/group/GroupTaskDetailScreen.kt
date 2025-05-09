@@ -50,28 +50,31 @@ fun GroupTaskDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.showEditTaskDialog() }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Task",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                    // Only show edit/delete options to users who can manage tasks
+                    if (uiState.canManageTask) {
+                        IconButton(onClick = { viewModel.showEditTaskDialog() }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Task",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
 
-                    IconButton(onClick = { viewModel.showAssignmentDialog() }) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = "Reassign Task",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                        IconButton(onClick = { viewModel.showAssignmentDialog() }) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = "Reassign Task",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
 
-                    IconButton(onClick = { viewModel.showDeleteConfirmationDialog() }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Task",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        IconButton(onClick = { viewModel.showDeleteConfirmationDialog() }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Task",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             )
@@ -120,17 +123,33 @@ fun GroupTaskDetailScreen(
                         )
                     }
 
-                    Checkbox(
-                        checked = uiState.task!!.isCompleted,
-                        onCheckedChange = { isChecked ->
-                            viewModel.toggleTaskCompletion(isChecked)
-                        }
-                    )
+                    // Only managers can directly mark tasks as complete
+                    if (uiState.canManageTask) {
+                        Checkbox(
+                            checked = uiState.task!!.isCompleted,
+                            onCheckedChange = { isChecked ->
+                                viewModel.toggleTaskCompletion(isChecked)
+                            }
+                        )
+                    } else {
+                        // For non-managers, just show the completion status
+                        Icon(
+                            imageVector = if (uiState.task!!.isCompleted)
+                                Icons.Default.CheckCircle
+                            else
+                                Icons.Default.RadioButtonUnchecked,
+                            contentDescription = if (uiState.task!!.isCompleted) "Completed" else "Pending",
+                            tint = if (uiState.task!!.isCompleted)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Task details card
+                // Task description card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -158,7 +177,75 @@ fun GroupTaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Group information
+                // Completion confirmation for assigned members
+                if (uiState.isAssignedToTask) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Task Completion",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Confirm when you've completed your part of this task:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            val hasConfirmed = uiState.task!!.hasUserConfirmedCompletion(uiState.currentUserId)
+
+                            Button(
+                                onClick = { viewModel.confirmTaskCompletion(!hasConfirmed) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (hasConfirmed)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (hasConfirmed)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = if (hasConfirmed)
+                                        Icons.Default.CheckCircle
+                                    else
+                                        Icons.Default.Check,
+                                    contentDescription = null
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Text(
+                                    text = if (hasConfirmed)
+                                        "I've Completed This Task"
+                                    else
+                                        "Mark as Completed by Me"
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Group information and assigned members
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -197,7 +284,7 @@ fun GroupTaskDetailScreen(
                         )
 
                         if (uiState.assignedUsers.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
                                 text = "Assigned to:",
@@ -206,15 +293,77 @@ fun GroupTaskDetailScreen(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Show assigned members with their completion status
+                            uiState.assignedUsers.forEach { user ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    // User avatar
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = user.name.first().toString(),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Text(
+                                        text = user.name + if (user.id == uiState.currentUserId) " (You)" else "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    // Completion status icon
+                                    val hasConfirmed = uiState.task!!.hasUserConfirmedCompletion(user.id)
+
+                                    Icon(
+                                        imageVector = if (hasConfirmed)
+                                            Icons.Default.CheckCircle
+                                        else
+                                            Icons.Default.RadioButtonUnchecked,
+                                        contentDescription = if (hasConfirmed) "Completed" else "Pending",
+                                        tint = if (hasConfirmed)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+
+                            // Show completion progress
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            val confirmationCount = uiState.task!!.getConfirmationCount()
+                            val totalAssigned = uiState.task!!.assignedTo.size
+
+                            LinearProgressIndicator(
+                                progress = confirmationCount.toFloat() / totalAssigned.toFloat(),
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
+                            )
+
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            uiState.assignedUsers.forEach { user ->
-                                Text(
-                                    text = "• ${user.name}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
+                            Text(
+                                text = "$confirmationCount of $totalAssigned members confirmed completion",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            )
                         }
                     }
                 }

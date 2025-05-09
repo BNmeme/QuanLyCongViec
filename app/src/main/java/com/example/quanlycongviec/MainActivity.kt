@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import com.example.quanlycongviec.ui.theme.TaskManagerTheme
 import com.example.quanlycongviec.ui.screens.main.MainScreen
 
-class lMainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

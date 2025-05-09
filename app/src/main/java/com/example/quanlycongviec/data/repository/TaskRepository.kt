@@ -1,6 +1,8 @@
 package com.example.quanlycongviec.data.repository
 
+import android.util.Log
 import com.example.quanlycongviec.domain.model.Task
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -9,15 +11,27 @@ class TaskRepository(
 ) {
 
     suspend fun getPersonalTasks(userId: String): List<Task> {
+        Log.d("TaskRepository", "Getting personal tasks for user: $userId")
+
         val querySnapshot = firestore.collection("tasks")
             .whereEqualTo("userId", userId)
             .whereEqualTo("isGroupTask", false)
             .get()
             .await()
 
-        return querySnapshot.documents.mapNotNull { document ->
-            document.toObject(Task::class.java)?.copy(id = document.id)
+        val tasks = querySnapshot.documents.mapNotNull { document ->
+            try {
+                val task = document.toObject(Task::class.java)?.copy(id = document.id)
+                Log.d("TaskRepository", "Loaded task: ${task?.title}, ID: ${task?.id}")
+                task
+            } catch (e: Exception) {
+                Log.e("TaskRepository", "Error parsing task document: ${document.id}", e)
+                null
+            }
         }
+
+        Log.d("TaskRepository", "Loaded ${tasks.size} personal tasks")
+        return tasks
     }
 
     suspend fun getGroupTasksForUser(userId: String): List<Task> {
@@ -51,9 +65,18 @@ class TaskRepository(
     }
 
     suspend fun createTask(task: Task): String {
-        val documentRef = firestore.collection("tasks").document()
-        firestore.collection("tasks").document(documentRef.id).set(task).await()
-        return documentRef.id
+        try {
+            Log.d("TaskRepository", "Creating task: ${task.title} for user: ${task.userId}")
+            val documentRef = firestore.collection("tasks").document()
+            val taskWithId = task.copy(id = documentRef.id)
+            Log.d("TaskRepository", "Task data to save: $taskWithId")
+            firestore.collection("tasks").document(documentRef.id).set(taskWithId).await()
+            Log.d("TaskRepository", "Task created with ID: ${documentRef.id}")
+            return documentRef.id
+        } catch (e: Exception) {
+            Log.e("TaskRepository", "Error creating task", e)
+            throw e
+        }
     }
 
     suspend fun updateTask(task: Task) {
@@ -71,8 +94,19 @@ class TaskRepository(
     }
 
     suspend fun reassignTask(taskId: String, assignedTo: List<String>) {
+        // When reassigning, we need to reset completion confirmations for users who are no longer assigned
+        val task = getTaskById(taskId)
+        val updatedConfirmations = task.completionConfirmations.filterKeys { userId ->
+            assignedTo.contains(userId)
+        }
+
         firestore.collection("tasks").document(taskId)
-            .update("assignedTo", assignedTo)
+            .update(
+                mapOf(
+                    "assignedTo" to assignedTo,
+                    "completionConfirmations" to updatedConfirmations
+                )
+            )
             .await()
     }
 
@@ -83,14 +117,23 @@ class TaskRepository(
         }
     }
 
-    // Add the updateTaskCompletion method to TaskRepository if it doesn't exist
+    suspend fun confirmTaskCompletion(taskId: String, userId: String, isConfirmed: Boolean) {
+        val task = getTaskById(taskId)
+        val updatedConfirmations = task.completionConfirmations.toMutableMap()
+        updatedConfirmations[userId] = isConfirmed
 
-    fun updateTaskCompletion(taskId: String, isCompleted: Boolean) {
-        // In a real implementation, this would update the task in Firebase
-        // For now, we'll just simulate the update
-        //val task = tasks.find { it.id == taskId }
-        //task?.let {
-        //    it.isCompleted = isCompleted
-        //}
+        firestore.collection("tasks").document(taskId)
+            .update("completionConfirmations", updatedConfirmations)
+            .await()
     }
+
+    suspend fun resetAllCompletionConfirmations(taskId: String) {
+        val task = getTaskById(taskId)
+        val emptyConfirmations = task.assignedTo.associateWith { false }
+
+        firestore.collection("tasks").document(taskId)
+            .update("completionConfirmations", emptyConfirmations)
+            .await()
+    }
+
 }

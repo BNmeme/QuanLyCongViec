@@ -1,6 +1,5 @@
 package com.example.quanlycongviec.ui.screens.tasks.group
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,12 +30,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +47,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.quanlycongviec.domain.model.GroupRole
 import com.example.quanlycongviec.domain.model.User
 import com.example.quanlycongviec.ui.components.TaskItem
 import com.example.quanlycongviec.ui.navigation.Screen
@@ -210,9 +216,11 @@ fun GroupDetailScreen(
                 items(uiState.members) { member ->
                     MemberItem(
                         user = member,
-                        isCreator = member.id == uiState.group?.createdBy,
+                        role = viewModel.getMemberRole(member.id),
                         canRemove = uiState.isCurrentUserCreator && member.id != uiState.currentUserId,
-                        onRemove = { viewModel.showRemoveMemberConfirmationDialog(member) }
+                        canChangeRole = uiState.isCurrentUserCreator && member.id != uiState.currentUserId,
+                        onRemove = { viewModel.showRemoveMemberConfirmationDialog(member) },
+                        onChangeRole = { viewModel.showChangeRoleDialog(member) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -233,13 +241,15 @@ fun GroupDetailScreen(
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        TextButton(onClick = { viewModel.showAddTaskDialog() }) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Task"
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Task")
+                        if (uiState.canCurrentUserManageTasks) {
+                            TextButton(onClick = { viewModel.showAddTaskDialog() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Add Task"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add Task")
+                            }
                         }
                     }
 
@@ -362,6 +372,18 @@ fun GroupDetailScreen(
             )
         }
 
+        // Change Role Dialog
+        if (uiState.showChangeRoleDialog && uiState.memberToChangeRole != null) {
+            ChangeRoleDialog(
+                member = uiState.memberToChangeRole!!,
+                selectedRole = uiState.selectedRole ?: GroupRole.MEMBER,
+                onRoleSelected = { viewModel.updateSelectedRole(it) },
+                onDismiss = { viewModel.hideChangeRoleDialog() },
+                onConfirm = { viewModel.changeRole() },
+                isLoading = uiState.isChangingRole
+            )
+        }
+
         if (uiState.showAddTaskDialog) {
             AddGroupTaskDialog(
                 onDismiss = { viewModel.hideAddTaskDialog() },
@@ -380,10 +402,14 @@ fun GroupDetailScreen(
 @Composable
 fun MemberItem(
     user: User,
-    isCreator: Boolean,
+    role: GroupRole,
     canRemove: Boolean,
-    onRemove: () -> Unit
+    canChangeRole: Boolean,
+    onRemove: () -> Unit,
+    onChangeRole: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -432,34 +458,168 @@ fun MemberItem(
                 )
             }
 
-            if (isCreator) {
-                Card(
-                    shape = RoundedCornerShape(4.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                ) {
-                    Text(
-                        text = "Creator",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+            // Role badge
+            Card(
+                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when (role) {
+                        GroupRole.LEADER -> MaterialTheme.colorScheme.primaryContainer
+                        GroupRole.DEPUTY -> MaterialTheme.colorScheme.secondaryContainer
+                        GroupRole.MEMBER -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = when (role) {
+                        GroupRole.LEADER -> "Leader"
+                        GroupRole.DEPUTY -> "Deputy"
+                        GroupRole.MEMBER -> "Member"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (role) {
+                        GroupRole.LEADER -> MaterialTheme.colorScheme.onPrimaryContainer
+                        GroupRole.DEPUTY -> MaterialTheme.colorScheme.onSecondaryContainer
+                        GroupRole.MEMBER -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
 
-            if (canRemove) {
-                IconButton(onClick = onRemove) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Remove Member",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+            if (canChangeRole || canRemove) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Member Options"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        if (canChangeRole) {
+                            DropdownMenuItem(
+                                text = { Text("Change Role") },
+                                onClick = {
+                                    showMenu = false
+                                    onChangeRole()
+                                }
+                            )
+                        }
+
+                        if (canRemove) {
+                            DropdownMenuItem(
+                                text = { Text("Remove from Group") },
+                                onClick = {
+                                    showMenu = false
+                                    onRemove()
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+fun ChangeRoleDialog(
+    member: User,
+    selectedRole: GroupRole,
+    onRoleSelected: (GroupRole) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    isLoading: Boolean
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change Role for ${member.name}") },
+        text = {
+            Column {
+                Text(
+                    text = "Select a role for this member:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Cannot change to LEADER as that's reserved for the creator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    RadioButton(
+                        selected = selectedRole == GroupRole.DEPUTY,
+                        onClick = { onRoleSelected(GroupRole.DEPUTY) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
+                        Text(
+                            text = "Deputy",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Can manage tasks and assign them to members",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    RadioButton(
+                        selected = selectedRole == GroupRole.MEMBER,
+                        onClick = { onRoleSelected(GroupRole.MEMBER) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
+                        Text(
+                            text = "Member",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Can view and complete assigned tasks",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Confirm")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

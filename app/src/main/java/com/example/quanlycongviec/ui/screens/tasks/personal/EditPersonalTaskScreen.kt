@@ -1,12 +1,9 @@
-package com.example.quanlycongviec.ui.screens.tasks.personal;
+package com.example.quanlycongviec.ui.screens.tasks.personal
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,14 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Button
@@ -56,14 +50,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.quanlycongviec.domain.model.Label
+import com.example.quanlycongviec.ui.components.LabelSelectionDialog
 import com.example.quanlycongviec.ui.theme.TaskPriority1
 import com.example.quanlycongviec.ui.theme.TaskPriority2
 import com.example.quanlycongviec.ui.theme.TaskPriority3
@@ -72,7 +63,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPersonalTaskScreen(
     navController: NavController,
@@ -80,39 +71,39 @@ fun EditPersonalTaskScreen(
     viewModel: EditPersonalTaskViewModel = viewModel(factory = EditPersonalTaskViewModelFactory(taskId))
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPriorityDropdown by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
-    
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = uiState.dueDate
     )
-    
+
     val calendar = Calendar.getInstance().apply {
         timeInMillis = uiState.dueDate
     }
-    
+
     val timePickerState = rememberTimePickerState(
         initialHour = calendar.get(Calendar.HOUR_OF_DAY),
         initialMinute = calendar.get(Calendar.MINUTE)
     )
-    
+
     LaunchedEffect(uiState.isTaskSaved) {
         if (uiState.isTaskSaved) {
             navController.navigateUp()
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = if (taskId == null) "Create Task" else "Edit Task",
                         color = MaterialTheme.colorScheme.onPrimary
-                    ) 
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary
@@ -165,7 +156,7 @@ fun EditPersonalTaskScreen(
                     modifier = Modifier.fillMaxWidth(),
                     isError = uiState.titleError != null
                 )
-                
+
                 if (uiState.titleError != null) {
                     Text(
                         text = uiState.titleError!!,
@@ -174,9 +165,9 @@ fun EditPersonalTaskScreen(
                         modifier = Modifier.padding(start = 16.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Description
                 OutlinedTextField(
                     value = uiState.description,
@@ -185,9 +176,9 @@ fun EditPersonalTaskScreen(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Due Date
                 OutlinedTextField(
                     value = formatDate(uiState.dueDate),
@@ -204,9 +195,9 @@ fun EditPersonalTaskScreen(
                         }
                     }
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Priority
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
@@ -228,7 +219,7 @@ fun EditPersonalTaskScreen(
                             }
                         }
                     )
-                    
+
                     DropdownMenu(
                         expanded = showPriorityDropdown,
                         onDismissRequest = { showPriorityDropdown = false }
@@ -247,7 +238,7 @@ fun EditPersonalTaskScreen(
                                 )
                             }
                         )
-                        
+
                         DropdownMenuItem(
                             text = { Text("Medium") },
                             onClick = {
@@ -262,7 +253,7 @@ fun EditPersonalTaskScreen(
                                 )
                             }
                         )
-                        
+
                         DropdownMenuItem(
                             text = { Text("Low") },
                             onClick = {
@@ -279,9 +270,9 @@ fun EditPersonalTaskScreen(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Labels
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -289,12 +280,11 @@ fun EditPersonalTaskScreen(
                 ) {
                     Text(
                         text = "Labels",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.bodyLarge
                     )
-                    
+
                     Spacer(modifier = Modifier.weight(1f))
-                    
+
                     IconButton(onClick = { showLabelDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Label,
@@ -302,55 +292,47 @@ fun EditPersonalTaskScreen(
                         )
                     }
                 }
-                
+
+                // Display selected labels
                 if (uiState.selectedLabels.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        uiState.selectedLabels.forEach { label ->
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = label.getColorValue().copy(alpha = 0.2f)
-                            ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            uiState.selectedLabels.forEach { label ->
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(8.dp)
-                                            .background(label.getColorValue(), CircleShape)
+                                            .size(12.dp)
+                                            .background(
+                                                color = label.getColorValue(),
+                                                shape = CircleShape
+                                            )
                                     )
-                                    
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
                                     Text(
                                         text = label.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Remove Label",
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .clickable { viewModel.removeLabel(label.id) },
-                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(32.dp))
-                
+
                 // Save Button
                 Button(
                     onClick = { viewModel.saveTask() },
@@ -369,7 +351,7 @@ fun EditPersonalTaskScreen(
                 }
             }
         }
-        
+
         // Date Picker Dialog
         if (showDatePicker) {
             DatePickerDialog(
@@ -399,7 +381,7 @@ fun EditPersonalTaskScreen(
                 DatePicker(state = datePickerState)
             }
         }
-        
+
         // Time Picker Dialog
         if (showTimePicker) {
             Dialog(onDismissRequest = { showTimePicker = false }) {
@@ -415,13 +397,13 @@ fun EditPersonalTaskScreen(
                             text = "Select Time",
                             style = MaterialTheme.typography.headlineSmall
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         TimePicker(state = timePickerState)
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
@@ -429,9 +411,9 @@ fun EditPersonalTaskScreen(
                             TextButton(onClick = { showTimePicker = false }) {
                                 Text("Cancel")
                             }
-                            
+
                             Spacer(modifier = Modifier.width(8.dp))
-                            
+
                             TextButton(onClick = {
                                 val newCalendar = Calendar.getInstance().apply {
                                     timeInMillis = uiState.dueDate
@@ -448,8 +430,8 @@ fun EditPersonalTaskScreen(
                 }
             }
         }
-        
-        // Label Selection Dialog
+
+        // Label selection dialog
         if (showLabelDialog) {
             LabelSelectionDialog(
                 availableLabels = uiState.availableLabels,
@@ -466,227 +448,6 @@ fun EditPersonalTaskScreen(
                     viewModel.createLabel(name, color)
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun LabelSelectionDialog(
-    availableLabels: List<Label>,
-    selectedLabelIds: List<String>,
-    onDismiss: () -> Unit,
-    onLabelSelected: (String, Boolean) -> Unit,
-    onCreateLabel: (String, String) -> Unit
-) {
-    var showCreateLabelDialog by remember { mutableStateOf(false) }
-    
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth(0.9f)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Select Labels",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    availableLabels.forEach { label ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .clickable {
-                                    onLabelSelected(
-                                        label.id,
-                                        !selectedLabelIds.contains(label.id)
-                                    )
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(label.getColorValue(), CircleShape)
-                                    .padding(4.dp)
-                            ) {
-                                if (selectedLabelIds.contains(label.id)) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Text(
-                                text = label.name,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                    
-                    if (availableLabels.isEmpty()) {
-                        Text(
-                            text = "No labels available. Create one below.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(vertical = 16.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { showCreateLabelDialog = true }) {
-                        Text("Create New Label")
-                    }
-                    
-                    TextButton(onClick = onDismiss) {
-                        Text("Done")
-                    }
-                }
-            }
-        }
-    }
-    
-    if (showCreateLabelDialog) {
-        CreateLabelDialog(
-            onDismiss = { showCreateLabelDialog = false },
-            onCreateLabel = { name, color ->
-                onCreateLabel(name, color)
-                showCreateLabelDialog = false
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun CreateLabelDialog(
-    onDismiss: () -> Unit,
-    onCreateLabel: (String, String) -> Unit
-) {
-    var labelName by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf("#4CAF50") } // Default green
-    
-    val colorOptions = listOf(
-        "#F44336", // Red
-        "#E91E63", // Pink
-        "#9C27B0", // Purple
-        "#673AB7", // Deep Purple
-        "#3F51B5", // Indigo
-        "#2196F3", // Blue
-        "#03A9F4", // Light Blue
-        "#00BCD4", // Cyan
-        "#009688", // Teal
-        "#4CAF50", // Green
-        "#8BC34A", // Light Green
-        "#CDDC39", // Lime
-        "#FFEB3B", // Yellow
-        "#FFC107", // Amber
-        "#FF9800", // Orange
-        "#FF5722"  // Deep Orange
-    )
-    
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Create New Label",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = labelName,
-                    onValueChange = { labelName = it },
-                    label = { Text("Label Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Select Color",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    colorOptions.forEach { color ->
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(color)))
-                                .clickable { selectedColor = color }
-                                .padding(4.dp)
-                        ) {
-                            if (selectedColor == color) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Button(
-                        onClick = { onCreateLabel(labelName, selectedColor) },
-                        enabled = labelName.isNotBlank()
-                    ) {
-                        Text("Create")
-                    }
-                }
-            }
         }
     }
 }

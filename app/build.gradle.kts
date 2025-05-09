@@ -75,7 +75,7 @@ dependencies {
 
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.firebaseui:firebase-ui-auth:9.0.0")
 
 //    Other dependencies
@@ -84,9 +84,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation ("androidx.compose.material:material-icons-extended:1.7.8")
-//    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // Accompanist
-//    implementation ("com.google.accompanist:accompanist-swiperefresh:0.30.1")
+    implementation ("com.google.accompanist:accompanist-swiperefresh:0.30.1")
 
 }

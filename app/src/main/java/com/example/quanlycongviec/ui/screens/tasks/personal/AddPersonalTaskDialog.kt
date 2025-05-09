@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ fun AddPersonalTaskDialog(
     var priority by remember { mutableStateOf(3) } // Default: Low priority
     var showDatePicker by remember { mutableStateOf(false) }
     var dueDate by remember { mutableStateOf(System.currentTimeMillis() + 86400000) } // Tomorrow
+    var isSubmitting by remember { mutableStateOf(false) }
 
     var titleError by remember { mutableStateOf<String?>(null) }
     var descriptionError by remember { mutableStateOf<String?>(null) }
@@ -190,13 +192,24 @@ fun AddPersonalTaskDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = !isSubmitting
                     ) {
                         Text("Cancel")
+                    }
+
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .width(24.dp)
+                                .height(24.dp)
+                        )
                     }
 
                     Button(
@@ -215,6 +228,7 @@ fun AddPersonalTaskDialog(
                             }
 
                             if (isValid) {
+                                isSubmitting = true
                                 val task = Task(
                                     id = UUID.randomUUID().toString(),
                                     title = title,
@@ -230,7 +244,8 @@ fun AddPersonalTaskDialog(
                                 onTaskAdded(task)
                             }
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = !isSubmitting
                     ) {
                         Text("Add Task")
                     }
