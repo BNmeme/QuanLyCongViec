@@ -7,7 +7,8 @@ data class Group(
     val createdBy: String = "",
     val members: List<String> = emptyList(),
     val memberRoles: Map<String, GroupRole> = emptyMap(),
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val pendingInvitations: List<String> = emptyList()
 ) {
     fun getMemberRole(userId: String): GroupRole {
         return if (userId == createdBy) {
@@ -28,6 +29,18 @@ data class Group(
 
     fun canManageRoles(userId: String): Boolean {
         return userId == createdBy
+    }
+
+    fun isUserLeader(userId: String): Boolean {
+        return getMemberRole(userId) == GroupRole.LEADER
+    }
+
+    fun isUserDeputy(userId: String): Boolean {
+        return getMemberRole(userId) == GroupRole.DEPUTY
+    }
+
+    fun isUserAdmin(userId: String): Boolean {
+        return isUserLeader(userId) || isUserDeputy(userId)
     }
 }
 

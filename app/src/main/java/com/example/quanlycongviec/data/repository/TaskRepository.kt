@@ -2,9 +2,9 @@ package com.example.quanlycongviec.data.repository
 
 import android.util.Log
 import com.example.quanlycongviec.domain.model.Task
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.quanlycongviec.di.AppModule
 
 class TaskRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -72,6 +72,33 @@ class TaskRepository(
             Log.d("TaskRepository", "Task data to save: $taskWithId")
             firestore.collection("tasks").document(documentRef.id).set(taskWithId).await()
             Log.d("TaskRepository", "Task created with ID: ${documentRef.id}")
+
+            // Create deadline notifications if due date is set
+            if (task.dueDate > 0) {
+                val notificationRepository = AppModule.provideNotificationRepository()
+
+                // For personal tasks
+                if (!task.isGroupTask) {
+                    notificationRepository.createTaskDeadlineNotification(
+                        userId = task.userId,
+                        taskTitle = task.title,
+                        taskId = documentRef.id,
+                        dueDate = task.dueDate
+                    )
+                }
+                // For group tasks
+                else {
+                    for (assignedUserId in task.assignedTo) {
+                        notificationRepository.createTaskDeadlineNotification(
+                            userId = assignedUserId,
+                            taskTitle = task.title,
+                            taskId = documentRef.id,
+                            dueDate = task.dueDate
+                        )
+                    }
+                }
+            }
+
             return documentRef.id
         } catch (e: Exception) {
             Log.e("TaskRepository", "Error creating task", e)
@@ -81,6 +108,32 @@ class TaskRepository(
 
     suspend fun updateTask(task: Task) {
         firestore.collection("tasks").document(task.id).set(task).await()
+
+        // Update deadline notifications if due date is changed
+        if (task.dueDate > 0) {
+            val notificationRepository = AppModule.provideNotificationRepository()
+
+            // For personal tasks
+            if (!task.isGroupTask) {
+                notificationRepository.createTaskDeadlineNotification(
+                    userId = task.userId,
+                    taskTitle = task.title,
+                    taskId = task.id,
+                    dueDate = task.dueDate
+                )
+            }
+            // For group tasks
+            else {
+                for (assignedUserId in task.assignedTo) {
+                    notificationRepository.createTaskDeadlineNotification(
+                        userId = assignedUserId,
+                        taskTitle = task.title,
+                        taskId = task.id,
+                        dueDate = task.dueDate
+                    )
+                }
+            }
+        }
     }
 
     suspend fun deleteTask(taskId: String) {
@@ -88,9 +141,33 @@ class TaskRepository(
     }
 
     suspend fun toggleTaskCompletion(taskId: String, isCompleted: Boolean) {
+        val task = getTaskById(taskId)
+
         firestore.collection("tasks").document(taskId)
             .update("isCompleted", isCompleted)
             .await()
+
+        // Create completion notification for group tasks
+        if (isCompleted && task.isGroupTask) {
+            val notificationRepository = AppModule.provideNotificationRepository()
+            val userRepository = AppModule.provideUserRepository()
+            val authRepository = AppModule.provideAuthRepository()
+
+            val currentUserId = authRepository.getCurrentUserId() ?: return
+            val currentUser = userRepository.getUserById(currentUserId)
+
+            // Notify all assigned members except the current user
+            for (assignedUserId in task.assignedTo) {
+                if (assignedUserId != currentUserId) {
+                    notificationRepository.createTaskCompletedNotification(
+                        userId = assignedUserId,
+                        taskTitle = task.title,
+                        taskId = task.id,
+                        completedByName = currentUser?.name ?: "A team member"
+                    )
+                }
+            }
+        }
     }
 
     suspend fun reassignTask(taskId: String, assignedTo: List<String>) {
@@ -135,5 +212,4 @@ class TaskRepository(
             .update("completionConfirmations", emptyConfirmations)
             .await()
     }
-
 }

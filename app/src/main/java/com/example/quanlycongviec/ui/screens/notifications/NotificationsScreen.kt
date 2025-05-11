@@ -1,5 +1,6 @@
 package com.example.quanlycongviec.ui.screens.notifications
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -16,20 +17,25 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,15 +53,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.quanlycongviec.di.AppModule
 import com.example.quanlycongviec.domain.model.Notification
 import com.example.quanlycongviec.ui.navigation.Screen
 import com.example.quanlycongviec.ui.screens.tasks.group.GroupInvitationResponseDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +74,20 @@ fun NotificationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showInvitationDialog by remember { mutableStateOf<Notification?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Log the current state for debugging
+    LaunchedEffect(uiState) {
+        Log.d("NotificationsScreen", "UI State: isLoading=${uiState.isLoading}, notifications=${uiState.notifications.size}, error=${uiState.errorMessage}")
+    }
+
+    // Show error message if any
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,9 +104,37 @@ fun NotificationsScreen(
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.loadNotifications() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             )
-        }
+        },
+        floatingActionButton = {
+            // For testing purposes only
+            FloatingActionButton(
+                onClick = {
+                    viewModel.createTestNotification()
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Test notification created")
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Create Test Notification",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
@@ -130,6 +182,14 @@ fun NotificationsScreen(
                     NotificationItem(
                         notification = notification,
                         onClick = {
+                            // Only process click if it's not a responded invitation
+                            if (notification.type == NotificationType.GROUP_INVITATION && notification.isResponded) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("You have already responded to this invitation")
+                                }
+                                return@NotificationItem
+                            }
+
                             viewModel.markAsRead(notification.id)
 
                             when (notification.type) {
@@ -173,14 +233,77 @@ fun NotificationsScreen(
                 groupName = groupName,
                 invitedByName = invitedByName,
                 onAccept = {
-                    // Accept invitation logic would go here
-                    // For now, just close the dialog
-                    showInvitationDialog = null
+                    // Accept invitation logic
+                    coroutineScope.launch {
+                        try {
+                            val groupRepository = AppModule.provideGroupRepository()
+                            val notificationRepository = AppModule.provideNotificationRepository()
+                            val authRepository = AppModule.provideAuthRepository()
+                            val userRepository = AppModule.provideUserRepository()
+
+                            val currentUserId = authRepository.getCurrentUserId() ?: return@launch
+                            val currentUser = userRepository.getUserById(currentUserId)
+
+                            // Mark the notification as responded
+                            viewModel.markInvitationAsResponded(notification.id)
+
+                            // Accept the invitation
+                            groupRepository.acceptGroupInvitation(groupId, currentUserId)
+
+                            // Send notification to group creator
+                            val group = groupRepository.getGroupById(groupId)
+                            notificationRepository.createGroupInvitationResponseNotification(
+                                userId = group.createdBy,
+                                groupName = group.name,
+                                groupId = groupId,
+                                respondentName = currentUser?.name ?: "Someone",
+                                accepted = true
+                            )
+
+                            // Navigate to the group detail screen
+                            navController.navigate("${Screen.GroupDetail.route}/$groupId")
+                        } catch (e: Exception) {
+                            Log.e("NotificationsScreen", "Error accepting invitation: ${e.message}", e)
+                            snackbarHostState.showSnackbar("Error accepting invitation: ${e.message}")
+                        }
+                        showInvitationDialog = null
+                    }
                 },
                 onDecline = {
-                    // Decline invitation logic would go here
-                    // For now, just close the dialog
-                    showInvitationDialog = null
+                    // Decline invitation logic
+                    coroutineScope.launch {
+                        try {
+                            val groupRepository = AppModule.provideGroupRepository()
+                            val notificationRepository = AppModule.provideNotificationRepository()
+                            val authRepository = AppModule.provideAuthRepository()
+                            val userRepository = AppModule.provideUserRepository()
+
+                            val currentUserId = authRepository.getCurrentUserId() ?: return@launch
+                            val currentUser = userRepository.getUserById(currentUserId)
+
+                            // Mark the notification as responded
+                            viewModel.markInvitationAsResponded(notification.id)
+
+                            // Decline the invitation
+                            groupRepository.declineGroupInvitation(groupId, currentUserId)
+
+                            // Send notification to group creator
+                            val group = groupRepository.getGroupById(groupId)
+                            notificationRepository.createGroupInvitationResponseNotification(
+                                userId = group.createdBy,
+                                groupName = group.name,
+                                groupId = groupId,
+                                respondentName = currentUser?.name ?: "Someone",
+                                accepted = false
+                            )
+
+                            snackbarHostState.showSnackbar("Invitation declined")
+                        } catch (e: Exception) {
+                            Log.e("NotificationsScreen", "Error declining invitation: ${e.message}", e)
+                            snackbarHostState.showSnackbar("Error declining invitation: ${e.message}")
+                        }
+                        showInvitationDialog = null
+                    }
                 },
                 onDismiss = {
                     showInvitationDialog = null
@@ -196,12 +319,16 @@ fun NotificationItem(
     onClick: () -> Unit
 ) {
     val isRead = notification.isRead
+    val isResponded = notification.isResponded
+
+    // Determine if this is a responded invitation
+    val isRespondedInvitation = notification.type == NotificationType.GROUP_INVITATION && isResponded
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .alpha(if (isRead) 0.7f else 1f)
+            .clickable(onClick = onClick, enabled = !isRespondedInvitation)
+            .alpha(if (isRead || isRespondedInvitation) 0.7f else 1f)
     ) {
         Row(
             modifier = Modifier
@@ -233,13 +360,17 @@ fun NotificationItem(
                 Text(
                     text = notification.title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold
+                    fontWeight = if (isRead || isRespondedInvitation) FontWeight.Normal else FontWeight.Bold,
+                    textDecoration = if (isRespondedInvitation) TextDecoration.LineThrough else TextDecoration.None
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = notification.message,
+                    text = if (isRespondedInvitation)
+                        "${notification.message} (Responded)"
+                    else
+                        notification.message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -253,7 +384,7 @@ fun NotificationItem(
                 )
             }
 
-            if (!isRead) {
+            if (!isRead && !isRespondedInvitation) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)

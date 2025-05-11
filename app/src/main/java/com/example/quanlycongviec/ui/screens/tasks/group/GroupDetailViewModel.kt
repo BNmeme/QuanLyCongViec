@@ -1,21 +1,24 @@
 package com.example.quanlycongviec.ui.screens.tasks.group
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.quanlycongviec.data.repository.AuthRepository
 import com.example.quanlycongviec.data.repository.GroupRepository
+import com.example.quanlycongviec.data.repository.NotificationRepository
+import com.example.quanlycongviec.data.repository.TaskRepository
 import com.example.quanlycongviec.data.repository.UserRepository
 import com.example.quanlycongviec.di.AppModule
 import com.example.quanlycongviec.domain.model.Group
 import com.example.quanlycongviec.domain.model.GroupRole
+import com.example.quanlycongviec.domain.model.Task
 import com.example.quanlycongviec.domain.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.example.quanlycongviec.domain.model.Task
 
 class GroupDetailViewModel(
     private val groupId: String
@@ -24,6 +27,7 @@ class GroupDetailViewModel(
     private val groupRepository = AppModule.provideGroupRepository()
     private val userRepository = AppModule.provideUserRepository()
     private val taskRepository = AppModule.provideTaskRepository()
+    private val notificationRepository = AppModule.provideNotificationRepository()
 
     private val _uiState = MutableStateFlow(GroupDetailUiState())
     val uiState: StateFlow<GroupDetailUiState> = _uiState.asStateFlow()
@@ -188,9 +192,12 @@ class GroupDetailViewModel(
 
             try {
                 // Find user by email
-                val userByEmail = userRepository.getUserByEmail(_uiState.value.newMemberEmail)
+                val email = _uiState.value.newMemberEmail
+                Log.d("GroupDetailViewModel", "Looking for user with email: $email")
+                val userByEmail = userRepository.getUserByEmail(email)
 
                 if (userByEmail == null) {
+                    Log.e("GroupDetailViewModel", "User with email $email not found")
                     _uiState.update {
                         it.copy(
                             isAddingMember = false,
@@ -200,8 +207,11 @@ class GroupDetailViewModel(
                     return@launch
                 }
 
+                Log.d("GroupDetailViewModel", "Found user: ${userByEmail.id}, ${userByEmail.name}, ${userByEmail.email}")
+
                 // Check if user is already a member
                 if (_uiState.value.group?.members?.contains(userByEmail.id) == true) {
+                    Log.e("GroupDetailViewModel", "User is already a member of this group")
                     _uiState.update {
                         it.copy(
                             isAddingMember = false,
@@ -211,8 +221,63 @@ class GroupDetailViewModel(
                     return@launch
                 }
 
-                // Add member to group
+                // Check if user already has a pending invitation
+                if (_uiState.value.group?.pendingInvitations?.contains(userByEmail.id) == true) {
+                    Log.e("GroupDetailViewModel", "User already has a pending invitation")
+                    _uiState.update {
+                        it.copy(
+                            isAddingMember = false,
+                            addMemberErrorMessage = "User already has a pending invitation"
+                        )
+                    }
+                    return@launch
+                }
+
+                // Get current user
+                val currentUserId = authRepository.getCurrentUserId() ?: return@launch
+                val currentUser = userRepository.getUserById(currentUserId)
+                if (currentUser == null) {
+                    Log.e("GroupDetailViewModel", "Current user not found")
+                    _uiState.update {
+                        it.copy(
+                            isAddingMember = false,
+                            addMemberErrorMessage = "Failed to get current user"
+                        )
+                    }
+                    return@launch
+                }
+
+                // Get group
+                val group = _uiState.value.group
+                if (group == null) {
+                    Log.e("GroupDetailViewModel", "Group is null")
+                    _uiState.update {
+                        it.copy(
+                            isAddingMember = false,
+                            addMemberErrorMessage = "Failed to get group"
+                        )
+                    }
+                    return@launch
+                }
+
+                // Add member to pending invitations
+                Log.d("GroupDetailViewModel", "Adding user ${userByEmail.id} to pending invitations for group $groupId")
                 groupRepository.addMemberToGroup(groupId, userByEmail.id)
+
+                // Create notification
+                try {
+                    Log.d("GroupDetailViewModel", "Creating notification for user ${userByEmail.id}")
+                    val notificationId = notificationRepository.createGroupInvitationNotification(
+                        userId = userByEmail.id,
+                        groupName = group.name,
+                        groupId = group.id,
+                        invitedByName = currentUser.name ?: "Someone"
+                    )
+                    Log.d("GroupDetailViewModel", "Created notification with ID: $notificationId")
+                } catch (e: Exception) {
+                    Log.e("GroupDetailViewModel", "Error creating notification: ${e.message}", e)
+                    // Continue even if notification creation fails
+                }
 
                 // Reload group details
                 loadGroupDetails()
@@ -224,7 +289,10 @@ class GroupDetailViewModel(
                         newMemberEmail = ""
                     )
                 }
+
+                Log.d("GroupDetailViewModel", "Successfully added member to group")
             } catch (e: Exception) {
+                Log.e("GroupDetailViewModel", "Error adding member: ${e.message}", e)
                 _uiState.update {
                     it.copy(
                         isAddingMember = false,
@@ -408,6 +476,117 @@ class GroupDetailViewModel(
 
     fun getMemberRole(userId: String): GroupRole {
         return _uiState.value.group?.getMemberRole(userId) ?: GroupRole.MEMBER
+    }
+
+    private suspend fun getCurrentUser(): User? {
+        val currentUserId = authRepository.getCurrentUserId() ?: return null
+        return userRepository.getUserById(currentUserId)
+    }
+
+    private fun loadGroupData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            try {
+                val currentUserId = authRepository.getCurrentUserId() ?: ""
+                val group = groupRepository.getGroupById(groupId)
+                val members = userRepository.getUsersByIds(group.members)
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        group = group,
+                        members = members,
+                        currentUserId = currentUserId,
+                        isCurrentUserCreator = group.createdBy == currentUserId,
+                        canCurrentUserManageTasks = group.canManageTasks(currentUserId),
+                        editGroupName = group.name,
+                        editGroupDescription = group.description
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to load group details: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun inviteMember(email: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAddingMember = true, addMemberErrorMessage = null) }
+
+            try {
+                // Find user by email
+                val user = userRepository.getUserByEmail(email)
+                if (user != null) {
+                    // Check if user is already a member
+                    if (_uiState.value.group?.members?.contains(user.id) == true) {
+                        _uiState.update {
+                            it.copy(
+                                isAddingMember = false,
+                                addMemberErrorMessage = "User is already a member of this group"
+                            )
+                        }
+                        return@launch
+                    }
+
+                    // Check if user already has a pending invitation
+                    if (_uiState.value.group?.pendingInvitations?.contains(user.id) == true) {
+                        _uiState.update {
+                            it.copy(
+                                isAddingMember = false,
+                                addMemberErrorMessage = "User already has a pending invitation"
+                            )
+                        }
+                        return@launch
+                    }
+
+                    // Add invitation
+                    val groupId = _uiState.value.group?.id ?: return@launch
+                    groupRepository.addMemberToGroup(groupId, user.id)
+
+                    // Send notification
+                    val currentUser = getCurrentUser() ?: return@launch
+                    val group = _uiState.value.group ?: return@launch
+
+                    notificationRepository.createGroupInvitationNotification(
+                        userId = user.id,
+                        groupName = group.name,
+                        groupId = group.id,
+                        invitedByName = currentUser.name ?: "Someone"
+                    )
+
+                    // Refresh group data
+                    loadGroupData()
+
+                    _uiState.update {
+                        it.copy(
+                            isAddingMember = false,
+                            showAddMemberDialog = false,
+                            newMemberEmail = ""
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isAddingMember = false,
+                            addMemberErrorMessage = "User not found with this email"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isAddingMember = false,
+                        addMemberErrorMessage = "Failed to add member: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 }
 

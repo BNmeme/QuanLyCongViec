@@ -41,18 +41,46 @@ class GroupRepository(
     }
 
     suspend fun addMemberToGroup(groupId: String, userId: String) {
+        // Instead of directly adding the member, we'll track pending invitations
         val group = getGroupById(groupId)
-        if (!group.members.contains(userId)) {
+        if (!group.members.contains(userId) && !group.pendingInvitations.contains(userId)) {
+            val updatedPendingInvitations = group.pendingInvitations + userId
+
+            firestore.collection("groups").document(groupId)
+                .update("pendingInvitations", updatedPendingInvitations)
+                .await()
+        }
+    }
+
+    suspend fun acceptGroupInvitation(groupId: String, userId: String) {
+        val group = getGroupById(groupId)
+        if (group.pendingInvitations.contains(userId)) {
+            // Remove from pending invitations
+            val updatedPendingInvitations = group.pendingInvitations.filter { it != userId }
+            // Add to members
             val updatedMembers = group.members + userId
             val updatedMemberRoles = group.memberRoles + (userId to GroupRole.MEMBER)
 
             firestore.collection("groups").document(groupId)
                 .update(
                     mapOf(
+                        "pendingInvitations" to updatedPendingInvitations,
                         "members" to updatedMembers,
                         "memberRoles" to updatedMemberRoles
                     )
                 )
+                .await()
+        }
+    }
+
+    suspend fun declineGroupInvitation(groupId: String, userId: String) {
+        val group = getGroupById(groupId)
+        if (group.pendingInvitations.contains(userId)) {
+            // Remove from pending invitations
+            val updatedPendingInvitations = group.pendingInvitations.filter { it != userId }
+
+            firestore.collection("groups").document(groupId)
+                .update("pendingInvitations", updatedPendingInvitations)
                 .await()
         }
     }

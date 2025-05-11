@@ -34,11 +34,13 @@ class MainViewModel : ViewModel() {
             
             try {
                 val user = userRepository.getUserById(userId)
-                _uiState.update {
-                    it.copy(
-                        userName = user.name,
-                        userEmail = user.email
-                    )
+                if (user != null) {
+                    _uiState.update {
+                        it.copy(
+                            userName = user.name,
+                            userEmail = user.email
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 // Handle error silently for now

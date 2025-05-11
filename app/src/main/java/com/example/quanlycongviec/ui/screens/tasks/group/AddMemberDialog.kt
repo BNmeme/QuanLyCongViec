@@ -29,13 +29,13 @@ fun AddMemberDialog(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Add Member",
+                    text = "Invite Member",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 OutlinedTextField(
                     value = email,
                     onValueChange = onEmailChange,
@@ -45,7 +45,7 @@ fun AddMemberDialog(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading
                 )
-                
+
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -56,9 +56,9 @@ fun AddMemberDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -69,9 +69,9 @@ fun AddMemberDialog(
                     ) {
                         Text("Cancel")
                     }
-                    
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     Button(
                         onClick = onAddClick,
                         enabled = !isLoading
@@ -82,7 +82,7 @@ fun AddMemberDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Add")
+                            Text("Send Invitation")
                         }
                     }
                 }

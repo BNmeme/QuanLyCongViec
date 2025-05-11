@@ -9,33 +9,13 @@ class UserRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
-    suspend fun getUserById(userId: String): User {
+    suspend fun getUserById(userId: String): User? {
         val document = firestore.collection("users").document(userId).get().await()
-        return document.toObject(User::class.java) ?: throw IllegalStateException("User not found")
-    }
-
-    suspend fun updateUser(user: User) {
-        firestore.collection("users").document(user.id).set(user).await()
-    }
-
-    suspend fun updateUserPreference(userId: String, preferenceName: String, value: Any) {
-        val userDoc = firestore.collection("users").document(userId).get().await()
-        val user = userDoc.toObject(User::class.java) ?: throw IllegalStateException("User not found")
-
-        // Create preferences object if it doesn't exist
-        val preferences = user.preferences ?: UserPreferences()
-
-        // Update the specific preference
-        val updatedPreferences = when (preferenceName) {
-            "darkModeEnabled" -> preferences.copy(darkModeEnabled = value as Boolean)
-            "notificationsEnabled" -> preferences.copy(notificationsEnabled = value as Boolean)
-            "reminderTimeBeforeDeadline" -> preferences.copy(reminderTimeBeforeDeadline = value as Int)
-            else -> preferences
+        return if (document.exists()) {
+            document.toObject(User::class.java)?.copy(id = document.id)
+        } else {
+            null
         }
-
-        // Update the user with new preferences
-        val updatedUser = user.copy(preferences = updatedPreferences)
-        firestore.collection("users").document(userId).set(updatedUser).await()
     }
 
     suspend fun getUsersByIds(userIds: List<String>): List<User> {
@@ -43,11 +23,9 @@ class UserRepository(
 
         val users = mutableListOf<User>()
         for (userId in userIds) {
-            try {
-                val user = getUserById(userId)
+            val user = getUserById(userId)
+            if (user != null) {
                 users.add(user)
-            } catch (e: Exception) {
-                // Skip users that couldn't be fetched
             }
         }
         return users
@@ -65,5 +43,46 @@ class UserRepository(
         } else {
             null
         }
+    }
+
+    suspend fun createUser(user: User): String {
+        val documentRef = firestore.collection("users").document(user.id)
+        firestore.collection("users").document(user.id).set(user).await()
+        return documentRef.id
+    }
+
+    suspend fun updateUser(user: User) {
+        firestore.collection("users").document(user.id).set(user).await()
+    }
+
+    suspend fun updateUserPreference(userId: String, preferenceName: String, value: Any) {
+        val user = getUserById(userId)
+        if (user != null) {
+            firestore.collection("users").document(userId)
+                .update("preferences.$preferenceName", value)
+                .await()
+        }
+    }
+
+    suspend fun updateUserPreferences(userId: String, preferences: UserPreferences) {
+        firestore.collection("users").document(userId)
+            .update("preferences", preferences)
+            .await()
+    }
+
+    suspend fun searchUsersByEmail(email: String): List<User> {
+        val querySnapshot = firestore.collection("users")
+            .whereGreaterThanOrEqualTo("email", email)
+            .whereLessThanOrEqualTo("email", email + "\uf8ff")
+            .get()
+            .await()
+
+        return querySnapshot.documents.mapNotNull { document ->
+            document.toObject(User::class.java)?.copy(id = document.id)
+        }
+    }
+
+    suspend fun deleteUser(userId: String) {
+        firestore.collection("users").document(userId).delete().await()
     }
 }
