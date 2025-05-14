@@ -58,6 +58,11 @@ class GroupDetailViewModel(
                         editGroupDescription = group.description
                     )
                 }
+
+                // If we already have tasks loaded, recalculate stats
+                if (_uiState.value.groupTasks.isNotEmpty()) {
+                    calculateMemberTaskStats()
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -375,6 +380,7 @@ class GroupDetailViewModel(
                         groupTasks = tasks
                     )
                 }
+                calculateMemberTaskStats(tasks)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -400,7 +406,7 @@ class GroupDetailViewModel(
 
             try {
                 taskRepository.createTask(task)
-                loadGroupTasks()
+                loadGroupTasks() // This will now properly recalculate stats
                 _uiState.update { it.copy(isAddingTask = false, showAddTaskDialog = false) }
                 onComplete()
             } catch (e: Exception) {
@@ -588,6 +594,47 @@ class GroupDetailViewModel(
             }
         }
     }
+
+    private fun calculateMemberTaskStats(tasks: List<Task> = _uiState.value.groupTasks) {
+        viewModelScope.launch {
+            val members = _uiState.value.members
+            val memberStats = mutableMapOf<String, MemberTaskStats>()
+
+            // Initialize stats for all members
+            members.forEach { member ->
+                memberStats[member.id] = MemberTaskStats(
+                    userId = member.id,
+                    userName = member.name
+                )
+            }
+
+            // Calculate stats based on tasks
+            tasks.forEach { task ->
+                task.assignedTo.forEach { userId ->
+                    val currentStats = memberStats[userId] ?: return@forEach
+                    val newTotalAssigned = currentStats.totalAssigned + 1
+                    val newCompleted = if (task.hasUserConfirmedCompletion(userId)) {
+                        currentStats.completed + 1
+                    } else {
+                        currentStats.completed
+                    }
+                    val newCompletionRate = if (newTotalAssigned > 0) {
+                        newCompleted.toFloat() / newTotalAssigned
+                    } else {
+                        0f
+                    }
+
+                    memberStats[userId] = currentStats.copy(
+                        totalAssigned = newTotalAssigned,
+                        completed = newCompleted,
+                        completionRate = newCompletionRate
+                    )
+                }
+            }
+
+            _uiState.update { it.copy(memberTaskStats = memberStats) }
+        }
+    }
 }
 
 data class GroupDetailUiState(
@@ -631,7 +678,18 @@ data class GroupDetailUiState(
     val showChangeRoleDialog: Boolean = false,
     val memberToChangeRole: User? = null,
     val selectedRole: GroupRole? = null,
-    val isChangingRole: Boolean = false
+    val isChangingRole: Boolean = false,
+
+    // Member Statistics
+    val memberTaskStats: Map<String, MemberTaskStats> = emptyMap()
+)
+
+data class MemberTaskStats(
+    val userId: String = "",
+    val userName: String = "",
+    val totalAssigned: Int = 0,
+    val completed: Int = 0,
+    val completionRate: Float = 0f
 )
 
 class GroupDetailViewModelFactory(private val groupId: String) : ViewModelProvider.Factory {

@@ -3,12 +3,12 @@ package com.example.quanlycongviec.domain.model
 import com.google.firebase.firestore.PropertyName
 
 data class Task(
+    @get:PropertyName("id")
     val id: String = "",
     val title: String = "",
     val description: String = "",
 
     @get:PropertyName("isCompleted")
-
     val isCompleted: Boolean = false,
     val createdAt: Long = 0,
     val dueDate: Long = 0,
@@ -24,6 +24,7 @@ data class Task(
     val labels: List<String> = emptyList(),
 
     // Map of user IDs to their completion status
+    @get:PropertyName("completionConfirmations")
     val completionConfirmations: Map<String, Boolean> = emptyMap()
 ) {
     fun hasUserConfirmedCompletion(userId: String): Boolean {

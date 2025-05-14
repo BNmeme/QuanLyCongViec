@@ -63,6 +63,12 @@ import com.example.quanlycongviec.domain.model.GroupRole
 import com.example.quanlycongviec.domain.model.User
 import com.example.quanlycongviec.ui.components.TaskItem
 import com.example.quanlycongviec.ui.navigation.Screen
+import androidx.compose.foundation.Canvas
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,6 +193,13 @@ fun GroupDetailScreen(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Add the statistics section here
+                    MemberStatisticsSection(
+                        memberStats = uiState.memberTaskStats
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -521,6 +534,115 @@ fun MemberItem(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun MemberStatisticsSection(
+    memberStats: Map<String, MemberTaskStats>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Member Task Statistics",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (memberStats.isEmpty()) {
+                Text(
+                    text = "No task statistics available yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            } else {
+                memberStats.values.forEach { stats ->
+                    MemberStatItem(stats = stats)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MemberStatItem(
+    stats: MemberTaskStats,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stats.userName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Text(
+                text = "${(stats.completionRate * 100).roundToInt()}%",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = when {
+                    stats.completionRate >= 0.75f -> MaterialTheme.colorScheme.primary
+                    stats.completionRate >= 0.5f -> Color(0xFF4CAF50) // Green
+                    stats.completionRate >= 0.25f -> Color(0xFFFFC107) // Amber
+                    else -> Color(0xFFF44336) // Red
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        LinearProgressIndicator(
+            progress = stats.completionRate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp),
+            color = when {
+                stats.completionRate >= 0.75f -> MaterialTheme.colorScheme.primary
+                stats.completionRate >= 0.5f -> Color(0xFF4CAF50) // Green
+                stats.completionRate >= 0.25f -> Color(0xFFFFC107) // Amber
+                else -> Color(0xFFF44336) // Red
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = StrokeCap.Round
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Assigned: ${stats.totalAssigned}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+
+            Text(
+                text = "Completed: ${stats.completed}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
         }
     }
 }

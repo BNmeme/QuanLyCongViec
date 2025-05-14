@@ -14,24 +14,52 @@ import kotlinx.coroutines.launch
 class MainViewModel : ViewModel() {
     private val authRepository = AppModule.provideAuthRepository()
     private val userRepository = AppModule.provideUserRepository()
-    
+
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
-    
+
     init {
+        checkAuthState()
+    }
+
+    // This function will be called when the screen becomes visible
+    fun refreshUserData() {
         checkAuthState()
         loadUserData()
     }
-    
+
     private fun checkAuthState() {
         val isLoggedIn = authRepository.isUserLoggedIn()
         _uiState.update { it.copy(isLoggedIn = isLoggedIn) }
+
+        if (isLoggedIn) {
+            loadUserData()
+        } else {
+            // Clear user data when logged out
+            _uiState.update {
+                it.copy(
+                    userName = "",
+                    userEmail = ""
+                )
+            }
+        }
     }
-    
+
     private fun loadUserData() {
         viewModelScope.launch {
-            val userId = authRepository.getCurrentUserId() ?: return@launch
-            
+            val userId = authRepository.getCurrentUserId()
+
+            if (userId == null) {
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = false,
+                        userName = "",
+                        userEmail = ""
+                    )
+                }
+                return@launch
+            }
+
             try {
                 val user = userRepository.getUserById(userId)
                 if (user != null) {
@@ -47,12 +75,18 @@ class MainViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun signOut(onComplete: () -> Unit) {
         viewModelScope.launch {
             try {
                 authRepository.signOut()
-                _uiState.update { it.copy(isLoggedIn = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = false,
+                        userName = "",
+                        userEmail = ""
+                    )
+                }
                 onComplete()
             } catch (e: Exception) {
                 // Handle error

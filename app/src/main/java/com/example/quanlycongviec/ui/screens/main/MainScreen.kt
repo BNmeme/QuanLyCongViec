@@ -1,13 +1,16 @@
 package com.example.quanlycongviec.ui.screens.main
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +36,18 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh user data when the screen becomes active
+    LaunchedEffect(Unit) {
+        viewModel.refreshUserData()
+    }
+
+    // Listen for navigation changes to refresh user data when needed
+    LaunchedEffect(navBackStackEntry) {
+        if (navBackStackEntry?.destination?.route == Screen.Home.route) {
+            viewModel.refreshUserData()
+        }
+    }
 
     val isAuthenticated = remember(uiState.isLoggedIn) { uiState.isLoggedIn }
     val isBottomBarVisible = remember(currentDestination) {
@@ -62,7 +77,6 @@ fun MainScreen(
         drawerContent = {
             if (isDrawerEnabled) {
                 ModalDrawerSheet {
-                    Spacer(modifier = Modifier.height(16.dp))
                     DrawerHeader(
                         userName = uiState.userName,
                         userEmail = uiState.userEmail
@@ -104,7 +118,8 @@ fun MainScreen(
                         title = {
                             Text(
                                 text = getTitleForRoute(currentDestination?.route ?: ""),
-                                style = MaterialTheme.typography.titleLarge
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold
                             )
                         },
                         navigationIcon = {
@@ -145,22 +160,31 @@ private fun DrawerHeader(
     userName: String,
     userEmail: String
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.Start
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(vertical = 24.dp, horizontal = 16.dp)
     ) {
-        Text(
-            text = userName,
-            style = MaterialTheme.typography.headlineSmall
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = userName.ifEmpty { "Guest User" },
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
 
-        Text(
-            text = userEmail,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = userEmail.ifEmpty { "Not signed in" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+            )
+        }
     }
 }
 
@@ -177,12 +201,16 @@ private fun NavigationDrawerItems(
         NavigationItem("Personal Tasks", Icons.Default.Person, Screen.PersonalTasks.route),
         NavigationItem("Group Tasks", Icons.Default.Group, Screen.GroupTasks.route),
         NavigationItem("Groups", Icons.Default.People, Screen.Groups.route),
-        NavigationItem("Labels", Icons.AutoMirrored.Filled.Label, Screen.Labels.route), // New Labels item
+        NavigationItem("Labels", Icons.Default.Label, Screen.Labels.route),
         NavigationItem("Statistics", Icons.Default.BarChart, Screen.Statistics.route),
         NavigationItem("Settings", Icons.Default.Settings, Screen.Settings.route)
     )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
         items.forEach { item ->
             val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
@@ -214,17 +242,42 @@ fun NavigationDrawerItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    NavigationDrawerItem(
+    val backgroundColor = if (selected)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    else
+        Color.Transparent
+
+    val contentColor = if (selected)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.onSurface
+
+    androidx.compose.material3.NavigationDrawerItem(
         icon = {
             Icon(
                 imageVector = icon,
-                contentDescription = null
+                contentDescription = null,
+                tint = contentColor
             )
         },
-        label = { Text(text = label) },
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = contentColor
+            )
+        },
         selected = selected,
         onClick = onClick,
-        modifier = Modifier.padding(horizontal = 12.dp)
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = backgroundColor,
+            unselectedContainerColor = Color.Transparent,
+            selectedIconColor = contentColor,
+            unselectedIconColor = contentColor,
+            selectedTextColor = contentColor,
+            unselectedTextColor = contentColor
+        )
     )
 }
 
@@ -251,7 +304,11 @@ private fun BottomNavigationBar(navController: NavHostController) {
         )
     )
 
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        tonalElevation = 4.dp
+    ) {
         items.forEach { item ->
             val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
@@ -259,10 +316,22 @@ private fun BottomNavigationBar(navController: NavHostController) {
                 icon = {
                     Icon(
                         imageVector = item.icon,
-                        contentDescription = item.label
+                        contentDescription = item.label,
+                        tint = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                     )
                 },
-                label = { Text(item.label) },
+                label = {
+                    Text(
+                        text = item.label,
+                        color = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                    )
+                },
                 selected = isSelected,
                 onClick = {
                     if (currentDestination?.route != item.route) {
@@ -274,7 +343,14 @@ private fun BottomNavigationBar(navController: NavHostController) {
                             restoreState = true
                         }
                     }
-                }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                    unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                )
             )
         }
     }

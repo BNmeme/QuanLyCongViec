@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.example.quanlycongviec.domain.model.Task
 import com.example.quanlycongviec.ui.theme.GroupTaskColor
 import com.example.quanlycongviec.ui.theme.PersonalTaskColor
+import com.example.quanlycongviec.ui.theme.SuccessColor
 import com.example.quanlycongviec.ui.theme.TaskPriority1
 import com.example.quanlycongviec.ui.theme.TaskPriority2
 import com.example.quanlycongviec.ui.theme.TaskPriority3
@@ -50,9 +54,15 @@ fun TaskItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            )
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -60,24 +70,43 @@ fun TaskItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Priority indicator
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when (task.priority) {
-                            1 -> TaskPriority1
-                            2 -> TaskPriority2
-                            else -> TaskPriority3
-                        }
-                    )
-            )
+            // Priority indicator with label
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(
+                            when (task.priority) {
+                                1 -> TaskPriority1
+                                2 -> TaskPriority2
+                                else -> TaskPriority3
+                            }
+                        )
+                )
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = when (task.priority) {
+                        1 -> "High"
+                        2 -> "Med"
+                        else -> "Low"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (task.priority) {
+                        1 -> TaskPriority1
+                        2 -> TaskPriority2
+                        else -> TaskPriority3
+                    }
+                )
+            }
 
             // Task content
             Column(
@@ -102,37 +131,51 @@ fun TaskItem(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.AccessTime,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                         modifier = Modifier.size(14.dp)
                     )
 
                     Text(
                         text = " ${formatDate(task.dueDate)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    Icon(
-                        imageVector = if (task.isGroupTask) Icons.Default.Group else Icons.Default.Person,
-                        contentDescription = null,
-                        tint = if (task.isGroupTask) GroupTaskColor else PersonalTaskColor,
-                        modifier = Modifier.size(14.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (task.isGroupTask) GroupTaskColor.copy(alpha = 0.1f) else PersonalTaskColor.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (task.isGroupTask) Icons.Default.Group else Icons.Default.Person,
+                                contentDescription = null,
+                                tint = if (task.isGroupTask) GroupTaskColor else PersonalTaskColor,
+                                modifier = Modifier.size(12.dp)
+                            )
 
-                    Text(
-                        text = if (task.isGroupTask) " Group" else " Personal",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (task.isGroupTask) GroupTaskColor else PersonalTaskColor
-                    )
+                            Text(
+                                text = if (task.isGroupTask) " Group" else " Personal",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (task.isGroupTask) GroupTaskColor else PersonalTaskColor
+                            )
+                        }
+                    }
                 }
             }
 
@@ -141,13 +184,17 @@ fun TaskItem(
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Completed",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = SuccessColor,
                     modifier = Modifier.size(24.dp)
                 )
             } else {
                 Checkbox(
                     checked = false,
-                    onCheckedChange = null
+                    onCheckedChange = null,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary,
+                        uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 )
             }
         }

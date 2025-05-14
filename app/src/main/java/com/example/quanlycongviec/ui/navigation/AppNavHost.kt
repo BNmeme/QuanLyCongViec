@@ -6,11 +6,15 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.quanlycongviec.ui.screens.auth.ForgotPasswordScreen
+import com.example.quanlycongviec.ui.screens.auth.OtpVerificationScreen
+import com.example.quanlycongviec.ui.screens.auth.ResetPasswordScreen
 import com.example.quanlycongviec.ui.screens.auth.SignInScreen
 import com.example.quanlycongviec.ui.screens.auth.SignUpScreen
 import com.example.quanlycongviec.ui.screens.home.HomeScreen
 import com.example.quanlycongviec.ui.screens.labels.LabelsScreen
 import com.example.quanlycongviec.ui.screens.notifications.NotificationsScreen
+import com.example.quanlycongviec.ui.screens.profile.EditProfileScreen
 import com.example.quanlycongviec.ui.screens.profile.ProfileScreen
 import com.example.quanlycongviec.ui.screens.settings.SettingsScreen
 import com.example.quanlycongviec.ui.screens.splash.SplashScreen
@@ -41,6 +45,31 @@ fun AppNavHost(navController: NavHostController, startDestination: String = Scre
 
         composable(Screen.SignUp.route) {
             SignUpScreen(navController = navController)
+        }
+
+        // Password reset flow
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(navController = navController)
+        }
+
+        composable(
+            route = "${Screen.OtpVerification.route}/{email}",
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            OtpVerificationScreen(navController = navController, email = email)
+        }
+
+        composable(
+            route = "${Screen.ResetPassword.route}/{email}/{otp}",
+            arguments = listOf(
+                navArgument("email") { type = NavType.StringType },
+                navArgument("otp") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val otp = backStackEntry.arguments?.getString("otp") ?: ""
+            ResetPasswordScreen(navController = navController, email = email, otp = otp)
         }
 
         composable(Screen.Home.route) {
@@ -83,7 +112,6 @@ fun AppNavHost(navController: NavHostController, startDestination: String = Scre
             GroupDetailScreen(navController = navController, groupId = groupId)
         }
 
-        // Fixed: Removed groupId parameter as it's not expected by GroupTasksScreen
         composable(Screen.GroupTasks.route) {
             GroupTasksScreen(navController = navController)
         }
@@ -93,7 +121,6 @@ fun AppNavHost(navController: NavHostController, startDestination: String = Scre
             arguments = listOf(navArgument("taskId") { type = NavType.StringType })
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
-            // Fixed: Added required parameters
             GroupTaskDetailScreen(
                 taskId = taskId,
                 onNavigateBack = { navController.navigateUp() },
@@ -108,7 +135,6 @@ fun AppNavHost(navController: NavHostController, startDestination: String = Scre
             arguments = listOf(navArgument("taskId") { type = NavType.StringType })
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
-            // Fixed: Added required parameter
             EditGroupTaskScreen(
                 taskId = taskId,
                 onNavigateBack = { navController.navigateUp() }
@@ -117,6 +143,10 @@ fun AppNavHost(navController: NavHostController, startDestination: String = Scre
 
         composable(Screen.Profile.route) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(Screen.EditProfile.route) {
+            EditProfileScreen(navController = navController)
         }
 
         composable(Screen.Settings.route) {

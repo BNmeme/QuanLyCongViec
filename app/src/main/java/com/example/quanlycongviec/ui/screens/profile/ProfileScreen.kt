@@ -23,7 +23,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -36,20 +36,20 @@ fun ProfileScreen(
                 userEmail = uiState.user?.email ?: "",
                 isLoading = uiState.isLoading
             )
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             TaskStatisticsSection(
                 personalTaskCount = uiState.personalTasksCount,
                 groupTaskCount = uiState.groupTasksCount,
                 completedTaskCount = uiState.completedTasksCount,
                 onViewStatistics = { navController.navigate(com.example.quanlycongviec.ui.navigation.Screen.Statistics.route) }
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             ProfileActions(
-                onEditProfile = { /* TODO: Implement edit profile */ },
+                onEditProfile = { navController.navigate(com.example.quanlycongviec.ui.navigation.Screen.EditProfile.route) },
                 onSettings = { navController.navigate(com.example.quanlycongviec.ui.navigation.Screen.Settings.route) }
             )
         }
@@ -83,17 +83,17 @@ fun ProfileHeader(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = userName,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = userEmail,
             style = MaterialTheme.typography.bodyLarge,
@@ -125,14 +125,14 @@ fun TaskStatisticsSection(
                     text = "Your Statistics",
                     style = MaterialTheme.typography.titleLarge
                 )
-                
+
                 TextButton(onClick = onViewStatistics) {
                     Text("View More")
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -142,13 +142,13 @@ fun TaskStatisticsSection(
                     label = "Personal\nTasks",
                     icon = Icons.Default.Person
                 )
-                
+
                 StatisticItem(
                     value = groupTaskCount.toString(),
                     label = "Group\nTasks",
                     icon = Icons.Default.Group
                 )
-                
+
                 StatisticItem(
                     value = completedTaskCount.toString(),
                     label = "Completed\nTasks",
@@ -174,15 +174,15 @@ fun StatisticItem(
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(28.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
-        
+
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -204,13 +204,13 @@ fun ProfileActions(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(vertical = 8.dp)
         )
-        
+
         ActionButton(
             text = "Edit Profile",
             icon = Icons.Default.Edit,
             onClick = onEditProfile
         )
-        
+
         ActionButton(
             text = "Settings",
             icon = Icons.Default.Settings,
@@ -242,16 +242,16 @@ fun ActionButton(
                 imageVector = icon,
                 contentDescription = null
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge
             )
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             Icon(
                 imageVector = Icons.Default.ArrowForward,
                 contentDescription = null,

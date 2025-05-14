@@ -5,13 +5,12 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -20,36 +19,45 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quanlycongviec.ui.screens.settings.SettingsViewModel
 
+// Dark theme color scheme
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
+    primary = PrimaryColor,
+    primaryContainer = PrimaryVariant,
+    secondary = SecondaryColor,
+    secondaryContainer = SecondaryVariant,
+    tertiary = AccentColor,
     background = DarkBackground,
     surface = DarkSurface,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = Color.White,
-    onSurface = Color.White
+    onSurface = Color.White,
+    error = ErrorColor
 )
 
+// Light theme color scheme
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+    primary = PrimaryColor,
+    primaryContainer = PrimaryLight,
+    secondary = SecondaryColor,
+    secondaryContainer = SecondaryLight,
+    tertiary = AccentColor,
     background = LightBackground,
     surface = LightSurface,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = Color.Black,
-    onSurface = Color.Black
+    onSurface = Color.Black,
+    error = ErrorColor
 )
 
 @Composable
 fun TaskManagerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Disable dynamic color to ensure consistent colors across devices
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     // Get the settings from SettingsViewModel to check if dark mode is enabled
@@ -63,20 +71,17 @@ fun TaskManagerTheme(
         uiState.darkModeEnabled
     }
 
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        isDarkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    // Choose the color scheme based on the dark mode setting
+    val colorScheme = if (isDarkTheme) DarkColorScheme else LightColorScheme
+
     val view = LocalView.current
     if (!view.isInEditMode) {
-        SideEffect {
+        // Update the status bar color and appearance when theme changes
+        DisposableEffect(isDarkTheme) {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+            onDispose {}
         }
     }
 
