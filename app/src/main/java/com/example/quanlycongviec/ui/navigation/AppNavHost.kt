@@ -1,6 +1,7 @@
 package com.example.quanlycongviec.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +12,7 @@ import com.example.quanlycongviec.ui.screens.auth.OtpVerificationScreen
 import com.example.quanlycongviec.ui.screens.auth.ResetPasswordScreen
 import com.example.quanlycongviec.ui.screens.auth.SignInScreen
 import com.example.quanlycongviec.ui.screens.auth.SignUpScreen
+import com.example.quanlycongviec.ui.screens.calendar.CalendarScreen
 import com.example.quanlycongviec.ui.screens.home.HomeScreen
 import com.example.quanlycongviec.ui.screens.labels.LabelsScreen
 import com.example.quanlycongviec.ui.screens.notifications.NotificationsScreen
@@ -28,7 +30,6 @@ import com.example.quanlycongviec.ui.screens.tasks.group.GroupsScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.EditPersonalTaskScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.PersonalTaskDetailScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.PersonalTasksScreen
-import androidx.compose.ui.Modifier
 
 @Composable
 fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, startDestination: String = Screen.Splash.route) {
@@ -165,6 +166,10 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
 
         composable(Screen.Labels.route) {
             LabelsScreen(navController = navController)
+        }
+
+        composable(Screen.Calendar.route) {
+            CalendarScreen(navController = navController)
         }
     }
 }

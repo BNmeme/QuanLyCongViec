@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications")
     object Statistics : Screen("statistics")
     object Labels : Screen("labels")
+    object Calendar : Screen("calendar")
 
     // Password reset screens
     object ForgotPassword : Screen("forgot_password")

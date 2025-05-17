@@ -68,7 +68,8 @@ fun MainScreen(
                     it.route == Screen.Settings.route ||
                     it.route == Screen.Notifications.route ||
                     it.route == Screen.Profile.route ||
-                    it.route == Screen.Labels.route
+                    it.route == Screen.Labels.route ||
+                    it.route == Screen.Calendar.route
         } ?: false)
     }
 
@@ -201,6 +202,7 @@ private fun NavigationDrawerItems(
         NavigationItem("Personal Tasks", Icons.Default.Person, Screen.PersonalTasks.route),
         NavigationItem("Group Tasks", Icons.Default.Group, Screen.GroupTasks.route),
         NavigationItem("Groups", Icons.Default.People, Screen.Groups.route),
+        NavigationItem("Calendar", Icons.Default.DateRange, Screen.Calendar.route),
         NavigationItem("Labels", Icons.Default.Label, Screen.Labels.route),
         NavigationItem("Statistics", Icons.Default.BarChart, Screen.Statistics.route),
         NavigationItem("Settings", Icons.Default.Settings, Screen.Settings.route)
@@ -367,6 +369,7 @@ fun getTitleForRoute(route: String): String {
         route.startsWith(Screen.Statistics.route) -> "Statistics"
         route.startsWith(Screen.Settings.route) -> "Settings"
         route.startsWith(Screen.Labels.route) -> "Manage Labels"
+        route.startsWith(Screen.Calendar.route) -> "Calendar"
         route.startsWith(Screen.PersonalTaskDetail.route) -> "Task Details"
         route.startsWith(Screen.GroupTaskDetail.route) -> "Group Task"
         route.startsWith(Screen.CreateGroup.route) -> "Create Group"
