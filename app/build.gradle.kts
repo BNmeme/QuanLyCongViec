@@ -64,6 +64,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.androidx.espresso.core)
     implementation(libs.material)
+    implementation(libs.androidx.datastore.core.android)
+    implementation(libs.androidx.datastore.preferences.core.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

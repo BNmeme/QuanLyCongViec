@@ -63,7 +63,10 @@ fun SettingsScreen(
                             description = "Enable dark mode for the app",
                             icon = Icons.Default.DarkMode,
                             checked = uiState.darkModeEnabled,
-                            onCheckedChange = { viewModel.toggleDarkMode(it) }
+                            onCheckedChange = {
+                                // Toggle dark mode with immediate UI update
+                                viewModel.toggleDarkMode(it)
+                            }
                         )
                     }
 

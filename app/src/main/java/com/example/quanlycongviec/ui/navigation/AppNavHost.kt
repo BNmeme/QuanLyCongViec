@@ -28,12 +28,14 @@ import com.example.quanlycongviec.ui.screens.tasks.group.GroupsScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.EditPersonalTaskScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.PersonalTaskDetailScreen
 import com.example.quanlycongviec.ui.screens.tasks.personal.PersonalTasksScreen
+import androidx.compose.ui.Modifier
 
 @Composable
-fun AppNavHost(navController: NavHostController, startDestination: String = Screen.Splash.route) {
+fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, startDestination: String = Screen.Splash.route) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Screen.Splash.route,
+        modifier = modifier
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(navController = navController)

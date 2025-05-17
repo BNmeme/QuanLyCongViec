@@ -207,7 +207,12 @@ fun SignInScreen(
 
                     // Sign In Button
                     Button(
-                        onClick = { viewModel.signIn { navController.navigate(Screen.Home.route) } },
+                        onClick = { viewModel.signIn {
+                            // Navigate to Home screen after successful sign in
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.SignIn.route) { inclusive = true }
+                            }
+                        } },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

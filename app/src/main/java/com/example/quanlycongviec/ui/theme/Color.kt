@@ -26,12 +26,15 @@ val TaskPriority3 = Color(0xFF81C784)        // Low priority - Green
 // Task type colors
 val GroupTaskColor = Color(0xFF42A5F5)       // Group task - Blue
 val PersonalTaskColor = Color(0xFF29B6F6)    // Personal task - Light Blue
+val LightBlue = PersonalTaskColor
+
 
 // Accent colors
 val AccentColor = Color(0xFF448AFF)          // Accent Blue
 val SuccessColor = Color(0xFF4CAF50)         // Success Green
 val ErrorColor = Color(0xFFF44336)           // Error Red
 val WarningColor = Color(0xFFFFC107)         // Warning Yellow
+val DarkBlue = AccentColor
 
 // Legacy colors (kept for backward compatibility)
 val Purple80 = PrimaryColor
