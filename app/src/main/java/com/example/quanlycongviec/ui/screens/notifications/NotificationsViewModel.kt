@@ -29,7 +29,7 @@ class NotificationsViewModel : ViewModel() {
 
     fun loadNotifications() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
                 val currentUserId = authRepository.getCurrentUserId()
@@ -39,10 +39,15 @@ class NotificationsViewModel : ViewModel() {
                     val notifications = notificationRepository.getNotificationsForUser(currentUserId)
                     Log.d("NotificationsViewModel", "Loaded ${notifications.size} notifications")
 
+                    // Sort notifications by timestamp (newest first)
+                    val sortedNotifications = notifications.sortedByDescending { it.timestamp }
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            notifications = notifications
+                            notifications = sortedNotifications,
+                            filteredNotifications = sortedNotifications,
+                            filterType = NotificationFilterType.ALL
                         )
                     }
                 } else {
@@ -138,10 +143,42 @@ class NotificationsViewModel : ViewModel() {
             }
         }
     }
+
+    fun filterNotifications(filterType: NotificationFilterType) {
+        val allNotifications = _uiState.value.notifications
+
+        val filtered = when (filterType) {
+            NotificationFilterType.ALL -> allNotifications
+            NotificationFilterType.UNREAD -> allNotifications.filter { !it.isRead }
+            NotificationFilterType.TASK -> allNotifications.filter {
+                it.type == NotificationType.TASK_ASSIGNED ||
+                        it.type == NotificationType.TASK_DEADLINE ||
+                        it.type == NotificationType.TASK_COMPLETED
+            }
+            NotificationFilterType.GROUP -> allNotifications.filter {
+                it.type == NotificationType.GROUP_INVITATION ||
+                        it.type == NotificationType.GROUP_INVITATION_ACCEPTED ||
+                        it.type == NotificationType.GROUP_INVITATION_DECLINED
+            }
+        }
+
+        _uiState.update {
+            it.copy(
+                filteredNotifications = filtered,
+                filterType = filterType
+            )
+        }
+    }
 }
 
 data class NotificationsUiState(
     val isLoading: Boolean = false,
     val notifications: List<Notification> = emptyList(),
+    val filteredNotifications: List<Notification> = emptyList(),
+    val filterType: NotificationFilterType = NotificationFilterType.ALL,
     val errorMessage: String? = null
 )
+
+enum class NotificationFilterType {
+    ALL, UNREAD, TASK, GROUP
+}

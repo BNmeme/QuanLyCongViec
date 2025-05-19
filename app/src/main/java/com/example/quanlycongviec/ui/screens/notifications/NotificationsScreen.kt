@@ -3,6 +3,7 @@ package com.example.quanlycongviec.ui.screens.notifications
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,6 +66,7 @@ import com.example.quanlycongviec.ui.screens.tasks.group.GroupInvitationResponse
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -172,53 +175,168 @@ fun NotificationsScreen(
                 }
             }
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
             ) {
-                items(uiState.notifications) { notification ->
-                    NotificationItem(
-                        notification = notification,
-                        onClick = {
-                            // Only process click if it's not a responded invitation
-                            if (notification.type == NotificationType.GROUP_INVITATION && notification.isResponded) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("You have already responded to this invitation")
-                                }
-                                return@NotificationItem
+                // Filter buttons
+                NotificationFilters(
+                    selectedFilter = uiState.filterType,
+                    onFilterSelected = { viewModel.filterNotifications(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                if (uiState.filteredNotifications.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "No notifications found",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        // Group notifications by category
+                        val now = System.currentTimeMillis()
+                        val oneDayMillis = 24 * 60 * 60 * 1000L
+                        val oneWeekMillis = 7 * oneDayMillis
+
+                        // Unread notifications
+                        val unreadNotifications = uiState.filteredNotifications.filter { !it.isRead }
+                        if (unreadNotifications.isNotEmpty()) {
+                            item {
+                                NotificationCategoryHeader(title = "Unread")
                             }
 
-                            viewModel.markAsRead(notification.id)
+                            items(unreadNotifications) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        handleNotificationClick(
+                                            notification = notification,
+                                            viewModel = viewModel,
+                                            navController = navController,
+                                            coroutineScope = coroutineScope,
+                                            snackbarHostState = snackbarHostState,
+                                            onShowInvitationDialog = { showInvitationDialog = it }
+                                        )
+                                    }
+                                )
 
-                            when (notification.type) {
-                                NotificationType.GROUP_INVITATION -> {
-                                    showInvitationDialog = notification
-                                }
-                                NotificationType.TASK_ASSIGNED, NotificationType.TASK_DEADLINE -> {
-                                    notification.relatedTaskId?.let { taskId ->
-                                        if (notification.relatedGroupId != null) {
-                                            navController.navigate("${Screen.GroupTaskDetail.route}/$taskId")
-                                        } else {
-                                            navController.navigate("${Screen.PersonalTaskDetail.route}/$taskId")
-                                        }
-                                    }
-                                }
-                                NotificationType.GROUP_INVITATION_ACCEPTED,
-                                NotificationType.GROUP_INVITATION_DECLINED -> {
-                                    notification.relatedGroupId?.let { groupId ->
-                                        navController.navigate("${Screen.GroupDetail.route}/$groupId")
-                                    }
-                                }
-                                else -> {
-                                    // Just mark as read
-                                }
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }
-                    )
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        // Today's notifications
+                        val todayNotifications = uiState.filteredNotifications.filter {
+                            now - it.timestamp < oneDayMillis && (unreadNotifications.isEmpty() || !unreadNotifications.contains(it))
+                        }
+                        if (todayNotifications.isNotEmpty()) {
+                            item {
+                                NotificationCategoryHeader(title = "Today")
+                            }
+
+                            items(todayNotifications) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        handleNotificationClick(
+                                            notification = notification,
+                                            viewModel = viewModel,
+                                            navController = navController,
+                                            coroutineScope = coroutineScope,
+                                            snackbarHostState = snackbarHostState,
+                                            onShowInvitationDialog = { showInvitationDialog = it }
+                                        )
+                                    }
+                                )
+
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+
+                        // This week's notifications
+                        val thisWeekNotifications = uiState.filteredNotifications.filter {
+                            now - it.timestamp < oneWeekMillis &&
+                                    now - it.timestamp >= oneDayMillis &&
+                                    (unreadNotifications.isEmpty() || !unreadNotifications.contains(it))
+                        }
+                        if (thisWeekNotifications.isNotEmpty()) {
+                            item {
+                                NotificationCategoryHeader(title = "This Week")
+                            }
+
+                            items(thisWeekNotifications) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        handleNotificationClick(
+                                            notification = notification,
+                                            viewModel = viewModel,
+                                            navController = navController,
+                                            coroutineScope = coroutineScope,
+                                            snackbarHostState = snackbarHostState,
+                                            onShowInvitationDialog = { showInvitationDialog = it }
+                                        )
+                                    }
+                                )
+
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+
+                        // Older notifications
+                        val olderNotifications = uiState.filteredNotifications.filter {
+                            now - it.timestamp >= oneWeekMillis &&
+                                    (unreadNotifications.isEmpty() || !unreadNotifications.contains(it))
+                        }
+                        if (olderNotifications.isNotEmpty()) {
+                            item {
+                                NotificationCategoryHeader(title = "Older")
+                            }
+
+                            items(olderNotifications) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        handleNotificationClick(
+                                            notification = notification,
+                                            viewModel = viewModel,
+                                            navController = navController,
+                                            coroutineScope = coroutineScope,
+                                            snackbarHostState = snackbarHostState,
+                                            onShowInvitationDialog = { showInvitationDialog = it }
+                                        )
+                                    }
+                                )
+
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -432,6 +550,115 @@ private fun formatTimestamp(timestamp: Long): String {
             val date = Date(timestamp)
             val format = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
             format.format(date)
+        }
+    }
+}
+
+@Composable
+fun NotificationCategoryHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(vertical = 12.dp)
+    )
+}
+
+@Composable
+fun NotificationFilters(
+    selectedFilter: NotificationFilterType,
+    onFilterSelected: (NotificationFilterType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = selectedFilter == NotificationFilterType.ALL,
+            onClick = { onFilterSelected(NotificationFilterType.ALL) },
+            label = "All"
+        )
+
+        FilterChip(
+            selected = selectedFilter == NotificationFilterType.UNREAD,
+            onClick = { onFilterSelected(NotificationFilterType.UNREAD) },
+            label = "Unread"
+        )
+
+        FilterChip(
+            selected = selectedFilter == NotificationFilterType.TASK,
+            onClick = { onFilterSelected(NotificationFilterType.TASK) },
+            label = "Tasks"
+        )
+
+        FilterChip(
+            selected = selectedFilter == NotificationFilterType.GROUP,
+            onClick = { onFilterSelected(NotificationFilterType.GROUP) },
+            label = "Groups"
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String
+) {
+    androidx.compose.material3.FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+        )
+    )
+}
+
+// Helper function to handle notification clicks
+private fun handleNotificationClick(
+    notification: Notification,
+    viewModel: NotificationsViewModel,
+    navController: NavController,
+    coroutineScope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    onShowInvitationDialog: (Notification) -> Unit
+) {
+    // Only process click if it's not a responded invitation
+    if (notification.type == NotificationType.GROUP_INVITATION && notification.isResponded) {
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar("You have already responded to this invitation")
+        }
+        return
+    }
+
+    viewModel.markAsRead(notification.id)
+
+    when (notification.type) {
+        NotificationType.GROUP_INVITATION -> {
+            onShowInvitationDialog(notification)
+        }
+        NotificationType.TASK_ASSIGNED, NotificationType.TASK_DEADLINE -> {
+            notification.relatedTaskId?.let { taskId ->
+                if (notification.relatedGroupId != null) {
+                    navController.navigate("${Screen.GroupTaskDetail.route}/$taskId")
+                } else {
+                    navController.navigate("${Screen.PersonalTaskDetail.route}/$taskId")
+                }
+            }
+        }
+        NotificationType.GROUP_INVITATION_ACCEPTED,
+        NotificationType.GROUP_INVITATION_DECLINED -> {
+            notification.relatedGroupId?.let { groupId ->
+                navController.navigate("${Screen.GroupDetail.route}/$groupId")
+            }
+        }
+        else -> {
+            // Just mark as read
         }
     }
 }
