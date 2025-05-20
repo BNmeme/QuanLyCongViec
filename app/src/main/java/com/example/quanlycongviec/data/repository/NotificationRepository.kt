@@ -270,6 +270,18 @@ class NotificationRepository(
         }
     }
 
+    suspend fun deleteNotification(notificationId: String) {
+        try {
+            firestore.collection("notifications").document(notificationId)
+                .delete()
+                .await()
+            Log.d("NotificationRepository", "Deleted notification $notificationId")
+        } catch (e: Exception) {
+            Log.e("NotificationRepository", "Error deleting notification: ${e.message}", e)
+            throw e
+        }
+    }
+
     suspend fun deleteNotificationsForGroup(groupId: String) {
         try {
             val querySnapshot = firestore.collection("notifications")

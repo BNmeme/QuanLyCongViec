@@ -88,13 +88,32 @@ class TaskRepository(
                 }
                 // For group tasks
                 else {
+                    val authRepository = AppModule.provideAuthRepository()
+                    val userRepository = AppModule.provideUserRepository()
+                    val currentUserId = authRepository.getCurrentUserId() ?: ""
+                    val currentUser = userRepository.getUserById(currentUserId)
+                    val assignerName = currentUser?.name ?: "A team member"
+
                     for (assignedUserId in task.assignedTo) {
+                        // Create deadline notification for each assigned user
                         notificationRepository.createTaskDeadlineNotification(
                             userId = assignedUserId,
                             taskTitle = task.title,
                             taskId = documentRef.id,
-                            dueDate = task.dueDate
+                            dueDate = task.dueDate,
+                            groupId = task.groupId
                         )
+
+                        // Create task assignment notification for each assigned user (except the creator)
+                        if (assignedUserId != currentUserId) {
+                            notificationRepository.createTaskAssignedNotification(
+                                userId = assignedUserId,
+                                taskTitle = task.title,
+                                taskId = documentRef.id,
+                                assignedByName = assignerName,
+                                groupId = task.groupId
+                            )
+                        }
                     }
                 }
             }
@@ -129,7 +148,8 @@ class TaskRepository(
                         userId = assignedUserId,
                         taskTitle = task.title,
                         taskId = task.id,
-                        dueDate = task.dueDate
+                        dueDate = task.dueDate,
+                        groupId = task.groupId
                     )
                 }
             }
@@ -137,6 +157,11 @@ class TaskRepository(
     }
 
     suspend fun deleteTask(taskId: String) {
+        // Delete the task's notifications first
+        val notificationRepository = AppModule.provideNotificationRepository()
+        notificationRepository.deleteNotificationsForTask(taskId)
+
+        // Then delete the task
         firestore.collection("tasks").document(taskId).delete().await()
     }
 
@@ -163,7 +188,8 @@ class TaskRepository(
                         userId = assignedUserId,
                         taskTitle = task.title,
                         taskId = task.id,
-                        completedByName = currentUser?.name ?: "A team member"
+                        completedByName = currentUser?.name ?: "A team member",
+                        groupId = task.groupId
                     )
                 }
             }
@@ -177,6 +203,11 @@ class TaskRepository(
             assignedTo.contains(userId)
         }
 
+        // Get previously assigned users and newly assigned users
+        val previouslyAssigned = task.assignedTo
+        val newlyAssigned = assignedTo.filter { userId -> !previouslyAssigned.contains(userId) }
+
+        // Update the task
         firestore.collection("tasks").document(taskId)
             .update(
                 mapOf(
@@ -185,6 +216,27 @@ class TaskRepository(
                 )
             )
             .await()
+
+        // Send notifications to newly assigned users
+        if (newlyAssigned.isNotEmpty()) {
+            val notificationRepository = AppModule.provideNotificationRepository()
+            val userRepository = AppModule.provideUserRepository()
+            val authRepository = AppModule.provideAuthRepository()
+
+            val currentUserId = authRepository.getCurrentUserId() ?: return
+            val currentUser = userRepository.getUserById(currentUserId)
+            val assignerName = currentUser?.name ?: "A team member"
+
+            for (userId in newlyAssigned) {
+                notificationRepository.createTaskAssignedNotification(
+                    userId = userId,
+                    taskTitle = task.title,
+                    taskId = task.id,
+                    assignedByName = assignerName,
+                    groupId = task.groupId
+                )
+            }
+        }
     }
 
     suspend fun deleteTasksByGroupId(groupId: String) {

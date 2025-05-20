@@ -86,7 +86,10 @@ class NotificationsViewModel : ViewModel() {
                 }
 
                 _uiState.update {
-                    it.copy(notifications = updatedNotifications)
+                    it.copy(
+                        notifications = updatedNotifications,
+                        filteredNotifications = filterNotificationsByType(updatedNotifications, it.filterType)
+                    )
                 }
 
                 Log.d("NotificationsViewModel", "Marked notification $notificationId as read")
@@ -111,12 +114,40 @@ class NotificationsViewModel : ViewModel() {
                 }
 
                 _uiState.update {
-                    it.copy(notifications = updatedNotifications)
+                    it.copy(
+                        notifications = updatedNotifications,
+                        filteredNotifications = filterNotificationsByType(updatedNotifications, it.filterType)
+                    )
                 }
 
                 Log.d("NotificationsViewModel", "Marked invitation $notificationId as responded")
             } catch (e: Exception) {
                 Log.e("NotificationsViewModel", "Error marking invitation as responded: ${e.message}", e)
+            }
+        }
+    }
+
+    fun deleteNotification(notificationId: String) {
+        viewModelScope.launch {
+            try {
+                notificationRepository.deleteNotification(notificationId)
+
+                // Update local state
+                val updatedNotifications = _uiState.value.notifications.filter { it.id != notificationId }
+
+                _uiState.update {
+                    it.copy(
+                        notifications = updatedNotifications,
+                        filteredNotifications = filterNotificationsByType(updatedNotifications, it.filterType)
+                    )
+                }
+
+                Log.d("NotificationsViewModel", "Deleted notification $notificationId")
+            } catch (e: Exception) {
+                Log.e("NotificationsViewModel", "Error deleting notification: ${e.message}", e)
+                _uiState.update {
+                    it.copy(errorMessage = "Failed to delete notification: ${e.message}")
+                }
             }
         }
     }
@@ -146,27 +177,30 @@ class NotificationsViewModel : ViewModel() {
 
     fun filterNotifications(filterType: NotificationFilterType) {
         val allNotifications = _uiState.value.notifications
-
-        val filtered = when (filterType) {
-            NotificationFilterType.ALL -> allNotifications
-            NotificationFilterType.UNREAD -> allNotifications.filter { !it.isRead }
-            NotificationFilterType.TASK -> allNotifications.filter {
-                it.type == NotificationType.TASK_ASSIGNED ||
-                        it.type == NotificationType.TASK_DEADLINE ||
-                        it.type == NotificationType.TASK_COMPLETED
-            }
-            NotificationFilterType.GROUP -> allNotifications.filter {
-                it.type == NotificationType.GROUP_INVITATION ||
-                        it.type == NotificationType.GROUP_INVITATION_ACCEPTED ||
-                        it.type == NotificationType.GROUP_INVITATION_DECLINED
-            }
-        }
+        val filtered = filterNotificationsByType(allNotifications, filterType)
 
         _uiState.update {
             it.copy(
                 filteredNotifications = filtered,
                 filterType = filterType
             )
+        }
+    }
+
+    private fun filterNotificationsByType(notifications: List<Notification>, filterType: NotificationFilterType): List<Notification> {
+        return when (filterType) {
+            NotificationFilterType.ALL -> notifications
+            NotificationFilterType.UNREAD -> notifications.filter { !it.isRead }
+            NotificationFilterType.TASK -> notifications.filter {
+                it.type == NotificationType.TASK_ASSIGNED ||
+                        it.type == NotificationType.TASK_DEADLINE ||
+                        it.type == NotificationType.TASK_COMPLETED
+            }
+            NotificationFilterType.GROUP -> notifications.filter {
+                it.type == NotificationType.GROUP_INVITATION ||
+                        it.type == NotificationType.GROUP_INVITATION_ACCEPTED ||
+                        it.type == NotificationType.GROUP_INVITATION_DECLINED
+            }
         }
     }
 }
